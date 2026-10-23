@@ -5,6 +5,7 @@ import {decodePreparedDisplay,createDrawingFrame} from './prepared-display.js';
 import {loadProfile} from './product-profile.js';
 import {clamp,smooth,stateAt,pathPosition,dragYaw,cameraTurns,stops,titles,chapter,follow,response,pointerParallax,scrollAtTimeline,timelineAtScroll,installationEnd,cutawayEnd,waterEnd,openingEnd,rotationAllowed} from './motion.js';
 import {FillScrollGate,openingIntentAt} from './valve-operation.js';
+import {createSceneWarmup} from './scene-warmup.js';
 
 const section=document.querySelector('#experience'),canvas=document.querySelector('#scene'),wrap=document.querySelector('#canvas-wrap');
 const chapterTitle=document.querySelector('#chapter-title'),intro=document.querySelector('#intro'),loadCopy=document.querySelector('#load-copy'),retry=document.querySelector('#retry');
@@ -13,6 +14,7 @@ const motionQuery=matchMedia('(prefers-reduced-motion: reduce)');
 let renderer,scene,camera,product,profile,draft,draftGuide,environment,frame=0,current=0,target=0,lastTime=0,ready=false,drawingReady=false,visible=true,reduced=motionQuery.matches;
 let lastChapter=-1,renderCount=0,sizeDirty=true,abort=new AbortController();
 let reflectionTargets=[];
+let warmup=null;
 let sequenceEnd=1,sequenceStops=stops;
 let yaw=0,targetYaw=0,pointer=null;
 let openingIntent=false;
@@ -109,6 +111,8 @@ async function initialize(){
     pmrem.dispose();scene.add(product.root);
     ready=true;updateTarget();section.dataset.state='ready';loadFill.style.width='100%';current=target;sizeDirty=true;
     requestRender();
+    warmup=createSceneWarmup(renderer,scene,camera,{signal:abort.signal,textures:[product.water?.texture,product.water?.through?.texture],onReady:()=>{section.dataset.warmup=JSON.stringify(warmup.stats);requestRender();},onError:error=>{console.warn('Scene preparation deferred to first use',error);section.dataset.warmup=JSON.stringify(warmup.stats);requestRender();}});
+    section.dataset.warmup=JSON.stringify(warmup?.stats||null);
   }catch(error){drawingReady=false;fillGate.reset();if(error.name==='AbortError')return;console.error('Model initialization failed',error);section.dataset.state='error';loadCopy.textContent='Не удалось загрузить 3D-модель';retry.hidden=false;}
 }
 function resetParallax(){parallaxTarget.x=0;parallaxTarget.y=0;requestRender();}
@@ -171,11 +175,14 @@ function render(time){
   let fluidMoving=false,operationMoving=false;
   if(ready||drawingReady){
     const mobile=wrap.clientWidth<600;
-    if(sizeDirty){sizeDirty=false;renderer.setSize(wrap.clientWidth,wrap.clientHeight,false);}
+    if(sizeDirty){sizeDirty=false;renderer.setSize(wrap.clientWidth,wrap.clientHeight,false);warmup?.refresh();}
     product.root.visible=state.wireDraw>0||state.material>0;
     product.root.scale.z=reduced?1:Math.max(.003,state.volume);
     product.root.rotation.z=mobile&&!reduced?profile.camera.mobileExplodedRotation*state.explode:0;
     product.installation?.update(state);
+    // A direct jump into water can arrive before idle preparation completes.
+    // Keep the section visible and start its automatic fill once it is ready.
+    if(warmup&&!warmup.ready)state.waterFill=0;
     state.openValve=profile.opening&&fillGate.complete&&openingIntent?1:0;
     operationMoving=!!product.update?.(state,dt);
     product.cutaway?.update(state);
@@ -232,7 +239,7 @@ canvas.addEventListener('pointerup',endDrag);canvas.addEventListener('pointercan
 canvas.addEventListener('lostpointercapture',()=>{pointer=null;canvas.classList.remove('dragging');});
 document.querySelector('#reset-view').addEventListener('click',()=>{if(!ready||!rotationAllowed(stateAt(current,reduced),target))return;targetYaw=0;resetParallax();});
 canvas.addEventListener('keydown',event=>{if(!ready||!rotationAllowed(stateAt(current,reduced),target)||!['ArrowLeft','ArrowRight'].includes(event.key))return;event.preventDefault();targetYaw+=event.key==='ArrowLeft'?-.12:.12;requestRender();});
-retry.addEventListener('click',()=>{fillGate.reset();abort.abort();abort=new AbortController();if(renderer)renderer.dispose();ready=false;initialize();});
+retry.addEventListener('click',()=>{fillGate.reset();warmup?.cancel();warmup=null;abort.abort();abort=new AbortController();if(renderer)renderer.dispose();ready=false;initialize();});
 function blockScroll(event){if(ready&&fillGate.locked&&event.cancelable)event.preventDefault();}
 window.addEventListener('wheel',blockScroll,{passive:false,capture:true});window.addEventListener('touchmove',blockScroll,{passive:false,capture:true});
 window.addEventListener('keydown',event=>{if(['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' '].includes(event.key))blockScroll(event);},{capture:true});
@@ -241,6 +248,6 @@ window.addEventListener('pageshow',restartExperience);
 window.addEventListener('blur',()=>{if(pointer)endDrag({pointerId:pointer.id});resetParallax();});
 document.addEventListener('visibilitychange',()=>{visible=!document.hidden;lastTime=0;if(visible)requestRender();else{parallaxTarget.x=parallaxTarget.y=parallax.x=parallax.y=0;}});
 motionQuery.addEventListener('change',()=>{const anchor=target;reduced=motionQuery.matches;goTo(anchor);resize();});
-canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();fillGate.reset();ready=false;section.dataset.state='error';loadCopy.textContent='3D-сцена приостановлена';retry.hidden=false;});
+canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();warmup?.cancel();fillGate.reset();ready=false;section.dataset.state='error';loadCopy.textContent='3D-сцена приостановлена';retry.hidden=false;});
 new ResizeObserver(resize).observe(wrap);
 restartExperience();initialize();
