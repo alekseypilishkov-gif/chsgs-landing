@@ -8,7 +8,7 @@ import {FillScrollGate,openingIntentAt} from './valve-operation.js';
 import {createSceneWarmup} from './scene-warmup.js';
 
 const section=document.querySelector('#experience'),canvas=document.querySelector('#scene'),wrap=document.querySelector('#canvas-wrap');
-const chapterTitle=document.querySelector('#chapter-title'),intro=document.querySelector('#intro'),loadCopy=document.querySelector('#load-copy'),retry=document.querySelector('#retry');
+const chapterTitle=document.querySelector('#chapter-title'),loadCopy=document.querySelector('#load-copy'),retry=document.querySelector('#retry');
 const buttons=[...document.querySelectorAll('[data-stop]')];
 const motionQuery=matchMedia('(prefers-reduced-motion: reduce)');
 let renderer,scene,camera,product,profile,draft,draftGuide,environment,frame=0,current=0,target=0,lastTime=0,ready=false,drawingReady=false,visible=true,reduced=motionQuery.matches;
@@ -72,8 +72,6 @@ async function initialize(){
     // Start the large model transfer without making the DWG wait for it.
     const modelBuffer=fetchBuffer(profile.assetURLs.model);modelBuffer.catch(()=>{});
     const [{createProduct,createProductAsync},paths,prepared]=await Promise.all([import(profile.adapterURL),fetch(profile.assetURLs.drawing,{signal:abort.signal}).then(r=>{if(!r.ok)throw Error('Drawing');return r.json();}),profile.assetURLs.prepared?fetch(profile.assetURLs.prepared,{signal:abort.signal}).then(r=>{if(!r.ok)throw Error('Prepared display '+r.status);return r.arrayBuffer();}).then(b=>decodePreparedDisplay(b,{id:profile.id,source:profile.source.stepSHA256})):null]);
-    document.querySelectorAll('.product-name span').forEach((node,i)=>node.textContent=i?profile.designation:profile.name);
-    document.querySelector('.brand span').textContent=profile.brand;
     section.setAttribute('aria-label',profile.sectionLabel);canvas.setAttribute('aria-label',profile.canvasLabel);
     const fallback=document.querySelector('.fallback');fallback.src=profile.assetURLs.fallback;fallback.alt=profile.drawingAlt;
     section.dataset.productId=profile.id;section.dataset.sourceSha256=profile.source.stepSHA256;lastChapter=-1;
@@ -138,21 +136,11 @@ function fitCamera(state,mobile){
   targetCenter.copy(right).multiplyScalar((minX+maxX)/2).addScaledVector(up,(minY+maxY)/2);
   const aspect=wrap.clientWidth/wrap.clientHeight;
   const margin=profile.camera.margin[mobile?'mobile':'desktop']*(1+((profile.installation?.frameMargin||1)-1)*state.installationTurn);
-  const entry=1-smooth(state.progress,.04,.20);
-  const height=Math.max(maxY-minY,(maxX-minX)/aspect)*margin*(wrap.clientWidth>=600&&wrap.clientWidth<1000?1+entry*.3:1);
-  // On entry the object sits opposite the headline; the scene recentres as
-  // that introduction leaves. All later framing follows actual moved parts.
-  const titleSpace=!mobile?(1-smooth(state.progress,.04,.20))*.36:0;
-  const halfWidth=height*aspect/2;
-  targetCenter.addScaledVector(right,-titleSpace*halfWidth);
   // Fit every moved part through the perspective frustum. A corner closer
   // to the lens needs additional distance; a whole-assembly AABB loses scale.
   const tangent=Math.tan(THREE.MathUtils.degToRad(camera.fov/2));let distance=0;
-  // The mobile introduction owns the upper entry band. Fit the drawing in
-  // the remaining frustum and release that band together with the text fade.
-  const reserved=mobile?Math.min(220,wrap.clientHeight*.4)*state.intro/wrap.clientHeight:0;
-  for(const point of points){temp.copy(point).sub(targetCenter);const depth=temp.dot(viewDir);distance=Math.max(distance,Math.abs(temp.dot(up))/(tangent*(1-reserved))+depth,Math.abs(temp.dot(right))/(tangent*aspect)+depth);}
-  distance*=margin;targetCenter.addScaledVector(up,distance*tangent*reserved);
+  for(const point of points){temp.copy(point).sub(targetCenter);const depth=temp.dot(viewDir);distance=Math.max(distance,Math.abs(temp.dot(up))/tangent+depth,Math.abs(temp.dot(right))/(tangent*aspect)+depth);}
+  distance*=margin;
   camera.aspect=aspect;camera.position.copy(targetCenter).addScaledVector(viewDir,distance);
   camera.lookAt(targetCenter);
   // Shift the projection in pixels after fitting. Drawing and 3D stay
@@ -170,7 +158,7 @@ function render(time){
   if(mounting)targetYaw=0;
   yaw=reduced?targetYaw:follow(yaw,targetYaw,dt,response.rotation,.0001);
   const c=state.chapter;if(c!==lastChapter){lastChapter=c;chapterTitle.textContent=(profile?.chapters||titles)[c];buttons.forEach((b,i)=>{if(i===c)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');});const active=buttons[c],nav=active.parentElement,a=active.getBoundingClientRect(),n=nav.getBoundingClientRect();nav.scrollLeft+=a.left-n.left-(nav.clientWidth-a.width)/2;}
-  fill.style.width=(current/sequenceEnd*100)+'%';intro.style.opacity=state.intro;intro.style.transform=`translateY(${-state.progress*90}px)`;
+  fill.style.width=(current/sequenceEnd*100)+'%';
   const cue=document.querySelector('#cue-copy');cue.textContent=current>sequenceEnd-.03?'Начать заново':'Продолжайте скролл';
   let fluidMoving=false,operationMoving=false;
   if(ready||drawingReady){
