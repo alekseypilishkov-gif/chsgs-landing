@@ -1,7 +1,7 @@
 export const clamp = (n, a=0, b=1) => Math.min(b, Math.max(a, n));
 export const linear = (p,a,b) => clamp((p-a)/(b-a));
 export const smooth = (p,a,b) => {const t=linear(p,a,b);return t*t*(3-2*t);};
-export const response=Object.freeze({scroll:6,assembly:4,rotation:12,parallax:5,maxShiftX:12,maxShiftY:8});
+export const response=Object.freeze({scroll:6,assembly:4,rotation:12,parallax:5,maxShiftY:8,maxPointerYaw:2.5*Math.PI/180});
 const assemblyStart=.84,assemblyEnd=.98,assemblyExtra=.16;
 export const installationEnd=1.64;
 export const cutawayEnd=1.88;
@@ -26,8 +26,12 @@ export function follow(value,target,dt,rate,epsilon=.00008){
   const next=value+(target-value)*(1-Math.exp(-rate*Math.max(0,dt)));
   return Math.abs(target-next)<=epsilon?target:next;
 }
-export function pointerParallax(x,y,reduced=false){
-  return reduced?{x:0,y:0}:{x:-clamp(x,-1,1)*response.maxShiftX,y:-clamp(y,-1,1)*response.maxShiftY};
+export function pointerParallax(x,y,reduced=false,mounting=false){
+  return reduced?{x:0,y:0,yaw:0}:{x:0,y:-clamp(y,-1,1)*response.maxShiftY,yaw:mounting?0:-clamp(x,-1,1)*response.maxPointerYaw};
+}
+export function visibleParallax(pose,state){
+  if(state.reduced||state.volume===0)return {x:0,y:0,yaw:0};
+  return {x:0,y:pose.y*state.volume,yaw:state.installationTurn===1?0:pose.yaw*state.volume*(1-state.installationTurn)};
 }
 export const stops = [.08,.37,.64,.77,1];
 export const titles = ['Чертёж','Объём','Детали','Материалы','Изделие в сборе','Трубопровод','Продольный разрез','Заполнение водой','Открытие крана'];

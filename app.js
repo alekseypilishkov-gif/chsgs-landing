@@ -3,7 +3,7 @@ import {RoomEnvironment} from './vendor/RoomEnvironment.js';
 import {readCAD} from './model.js';
 import {decodePreparedDisplay,createDrawingFrame} from './prepared-display.js';
 import {loadProfile} from './product-profile.js';
-import {clamp,smooth,stateAt,pathPosition,dragYaw,cameraTurns,stops,titles,chapter,follow,response,pointerParallax,scrollAtTimeline,timelineAtScroll,installationEnd,cutawayEnd,waterEnd,openingEnd,rotationAllowed} from './motion.js';
+import {clamp,smooth,stateAt,pathPosition,dragYaw,cameraTurns,stops,titles,chapter,follow,response,pointerParallax,visibleParallax,scrollAtTimeline,timelineAtScroll,installationEnd,cutawayEnd,waterEnd,openingEnd,rotationAllowed} from './motion.js';
 import {FillScrollGate,openingIntentAt} from './valve-operation.js';
 import {createSceneWarmup} from './scene-warmup.js';
 
@@ -19,7 +19,7 @@ let sequenceEnd=1,sequenceStops=stops;
 let yaw=0,targetYaw=0,pointer=null;
 let openingIntent=false;
 const fillGate=new FillScrollGate();
-const parallax={x:0,y:0},parallaxTarget={x:0,y:0};
+const parallax={x:0,y:0,yaw:0},parallaxTarget={x:0,y:0,yaw:0};
 const box=new THREE.Box3(),temp=new THREE.Vector3(),targetCenter=new THREE.Vector3(),viewDir=new THREE.Vector3(),right=new THREE.Vector3(),up=new THREE.Vector3();
 const fill=document.querySelector('#progress-fill'),loadFill=document.querySelector('#load-fill');
 function nativeTop(p){const travel=section.offsetHeight-innerHeight;return section.offsetTop+travel*(reduced?p/sequenceEnd:scrollAtTimeline(p,sequenceEnd));}
@@ -36,7 +36,7 @@ function goTo(p){const next=ready&&profile.water?fillGate.request(p):p;window.sc
 function restartExperience(){
   if(pointer&&canvas.hasPointerCapture(pointer.id))canvas.releasePointerCapture(pointer.id);
   pointer=null;openingIntent=false;fillGate.reset();product?.operation?.reset();canvas.classList.remove('dragging');current=target=yaw=targetYaw=0;lastTime=0;lastChapter=-1;
-  parallax.x=parallax.y=parallaxTarget.x=parallaxTarget.y=0;
+  parallax.x=parallax.y=parallax.yaw=parallaxTarget.x=parallaxTarget.y=parallaxTarget.yaw=0;
   window.scrollTo({top:0,left:0,behavior:'instant'});updateTarget();
 }
 buttons.forEach(button=>button.addEventListener('click',()=>goTo(Number(button.dataset.stop))));
@@ -113,7 +113,7 @@ async function initialize(){
     section.dataset.warmup=JSON.stringify(warmup?.stats||null);
   }catch(error){drawingReady=false;fillGate.reset();if(error.name==='AbortError')return;console.error('Model initialization failed',error);section.dataset.state='error';loadCopy.textContent='Не удалось загрузить 3D-модель';retry.hidden=false;}
 }
-function resetParallax(){parallaxTarget.x=0;parallaxTarget.y=0;requestRender();}
+function resetParallax(){parallaxTarget.x=0;parallaxTarget.y=0;parallaxTarget.yaw=0;requestRender();}
 function resize(){sizeDirty=true;lastChapter=-1;if(ready)window.scrollTo({top:nativeTop(target),behavior:'instant'});resetParallax();}
 function fitCamera(state,mobile){
   const turns=cameraTurns(state,yaw),turning=turns.automatic;
@@ -143,17 +143,21 @@ function fitCamera(state,mobile){
   distance*=margin;
   camera.aspect=aspect;camera.position.copy(targetCenter).addScaledVector(viewDir,distance);
   camera.lookAt(targetCenter);
-  // Shift the projection in pixels after fitting. Drawing and 3D stay
-  // registered, and automatic fitting cannot cancel the cursor response.
-  camera.setViewOffset(wrap.clientWidth,wrap.clientHeight,-parallax.x,-parallax.y,wrap.clientWidth,wrap.clientHeight);
+  // Apply only the vertical cursor shift after fitting, fading it in with
+  // the model's depth. The drawing stays fixed and has no hover response.
+  const pose=visibleParallax(parallax,state);
+  camera.setViewOffset(wrap.clientWidth,wrap.clientHeight,0,-pose.y,wrap.clientWidth,wrap.clientHeight);
 }
 function render(time){
   frame=0;if(!visible)return;
   const dt=lastTime?Math.max(0,(time-lastTime)/1000):1/60;lastTime=time;
   current=reduced?target:follow(current,target,dt,target>.84||current>.84?response.assembly:response.scroll);
-  parallax.x=reduced?0:follow(parallax.x,parallaxTarget.x,dt,response.parallax,.01);
-  parallax.y=reduced?0:follow(parallax.y,parallaxTarget.y,dt,response.parallax,.01);
   const state=stateAt(drawingReady?Math.min(current,.18):current,reduced),rotatable=rotationAllowed(state,target),mounting=state.chapter>=5||chapter(target)>=5;section.dataset.progress=current.toFixed(5);
+  if(!state.volume)parallaxTarget.y=parallaxTarget.yaw=0;
+  if(mounting)parallaxTarget.yaw=0;
+  parallax.y=reduced?0:follow(parallax.y,parallaxTarget.y,dt,response.parallax,.01);
+  parallax.yaw=reduced?0:follow(parallax.yaw,parallaxTarget.yaw,dt,response.parallax,.00001);
+  const pointerPose=visibleParallax(parallax,state);
   if(!rotatable&&pointer)endDrag({pointerId:pointer.id});
   if(mounting)targetYaw=0;
   yaw=reduced?targetYaw:follow(yaw,targetYaw,dt,response.rotation,.0001);
@@ -166,6 +170,7 @@ function render(time){
     if(sizeDirty){sizeDirty=false;renderer.setSize(wrap.clientWidth,wrap.clientHeight,false);warmup?.refresh();}
     product.root.visible=state.wireDraw>0||state.material>0;
     product.root.scale.z=reduced?1:Math.max(.003,state.volume);
+    product.root.rotation.y=pointerPose.yaw;
     product.root.rotation.z=mobile&&!reduced?profile.camera.mobileExplodedRotation*state.explode:0;
     product.installation?.update(state);
     // A direct jump into water can arrive before idle preparation completes.
@@ -189,7 +194,7 @@ function render(time){
     section.dataset.cameraPosition=camera.position.toArray().map(v=>v.toFixed(5)).join(',');
     section.dataset.renderCount=String(renderCount);
     section.dataset.yaw=yaw.toFixed(4);section.dataset.yawTarget=targetYaw.toFixed(4);section.dataset.scrollTarget=target.toFixed(5);section.dataset.parts=String(product.parts.length);
-    section.dataset.parallaxX=parallax.x.toFixed(2);section.dataset.parallaxY=parallax.y.toFixed(2);section.dataset.parallaxTargetX=parallaxTarget.x.toFixed(2);section.dataset.parallaxTargetY=parallaxTarget.y.toFixed(2);
+    section.dataset.parallaxX=pointerPose.x.toFixed(2);section.dataset.parallaxY=pointerPose.y.toFixed(2);section.dataset.parallaxTargetX=parallaxTarget.x.toFixed(2);section.dataset.parallaxTargetY=parallaxTarget.y.toFixed(2);section.dataset.parallaxYaw=pointerPose.yaw.toFixed(5);section.dataset.parallaxTargetYaw=parallaxTarget.yaw.toFixed(5);
     section.dataset.draftOpacity=state.draft.toFixed(4);section.dataset.draftDissolve=state.draftDissolve.toFixed(4);section.dataset.volume=state.volume.toFixed(4);section.dataset.autoTurn=state.turn.toFixed(4);
     section.dataset.weldReveal=state.finalDetail.toFixed(4);
     section.dataset.installationTurn=state.installationTurn.toFixed(4);section.dataset.pipeWire=state.pipeWire.toFixed(4);section.dataset.pipeSolid=state.pipeSolid.toFixed(4);section.dataset.flangeWire=state.flangeWire.toFixed(4);section.dataset.flangeSolid=state.flangeSolid.toFixed(4);section.dataset.contextParts=String(product.installation?.units.length||0);
@@ -204,21 +209,22 @@ function render(time){
     const canvasLabel=c>=7&&!fillGate.locked&&state.flowRequested?'Кран открывается, вода проходит через шар и течёт по правой трубе.':c>=7&&!fillGate.locked&&through?.volume>0?'Кран закрывается. Остатки воды стекают по правой трубе.':c>=7?(fillGate.locked?'Вода заполняет левую трубу до закрытого шара.':'Левая труба заполнена водой до закрытого шара. Продолжайте прокрутку, чтобы открыть кран.'):c>=6?'Трёхмерная модель крана в продольном разрезе. Ракурс зафиксирован.':mounting?'Трёхмерная модель крана. На этапе монтажа ракурс зафиксирован.':profile.canvasLabel;
     if(canvas.getAttribute('aria-label')!==canvasLabel)canvas.setAttribute('aria-label',canvasLabel);
   }
-  const moving=current!==target||yaw!==targetYaw||fluidMoving||operationMoving||(!reduced&&(parallax.x!==parallaxTarget.x||parallax.y!==parallaxTarget.y));
+  const moving=current!==target||yaw!==targetYaw||fluidMoving||operationMoving||(!reduced&&(parallax.y!==parallaxTarget.y||parallax.yaw!==parallaxTarget.yaw));
   section.dataset.settled=String(!moving);
   if(moving||product?.water?.animated)requestRender();else lastTime=0;
 }
 canvas.addEventListener('pointerdown',event=>{
   if(event.button!==0||!ready||!rotationAllowed(stateAt(current,reduced),target)||event.pointerType==='touch')return;
   event.preventDefault();canvas.focus({preventScroll:true});
-  targetYaw=yaw;parallaxTarget.x=parallax.x;parallaxTarget.y=parallax.y;
+  targetYaw=yaw;parallaxTarget.y=parallax.y;parallaxTarget.yaw=parallax.yaw;
   pointer={id:event.pointerId,x:event.clientX,yaw};canvas.setPointerCapture(event.pointerId);canvas.classList.add('dragging');
 });
 canvas.addEventListener('pointermove',event=>{if(!pointer||pointer.id!==event.pointerId)return;if(!rotationAllowed(stateAt(current,reduced),target)){endDrag(event);return;}event.preventDefault();targetYaw=dragYaw(pointer.yaw,event.clientX-pointer.x);requestRender();});
 section.addEventListener('pointermove',event=>{
   if(event.pointerType!=='mouse'||!ready||pointer||reduced)return;
+  const state=stateAt(current,reduced);if(!state.volume)return;
   const rect=wrap.getBoundingClientRect();
-  Object.assign(parallaxTarget,pointerParallax((event.clientX-rect.left)/Math.max(1,rect.width)*2-1,(event.clientY-rect.top)/Math.max(1,rect.height)*2-1));requestRender();
+  Object.assign(parallaxTarget,pointerParallax((event.clientX-rect.left)/Math.max(1,rect.width)*2-1,(event.clientY-rect.top)/Math.max(1,rect.height)*2-1,false,state.chapter>=5||chapter(target)>=5));requestRender();
 },{passive:true});
 section.addEventListener('pointerleave',resetParallax);
 canvas.addEventListener('dragstart',event=>event.preventDefault());
@@ -234,7 +240,7 @@ window.addEventListener('keydown',event=>{if(['ArrowUp','ArrowDown','PageUp','Pa
 window.addEventListener('scroll',updateTarget,{passive:true});window.addEventListener('resize',resize,{passive:true});
 window.addEventListener('pageshow',restartExperience);
 window.addEventListener('blur',()=>{if(pointer)endDrag({pointerId:pointer.id});resetParallax();});
-document.addEventListener('visibilitychange',()=>{visible=!document.hidden;lastTime=0;if(visible)requestRender();else{parallaxTarget.x=parallaxTarget.y=parallax.x=parallax.y=0;}});
+document.addEventListener('visibilitychange',()=>{visible=!document.hidden;lastTime=0;if(visible)requestRender();else{parallaxTarget.x=parallaxTarget.y=parallaxTarget.yaw=parallax.x=parallax.y=parallax.yaw=0;}});
 motionQuery.addEventListener('change',()=>{const anchor=target;reduced=motionQuery.matches;goTo(anchor);resize();});
 canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();warmup?.cancel();fillGate.reset();ready=false;section.dataset.state='error';loadCopy.textContent='3D-сцена приостановлена';retry.hidden=false;});
 new ResizeObserver(resize).observe(wrap);
