@@ -16,6 +16,9 @@ export function createSceneWarmup(renderer,scene,camera,{signal,textures=[],onRe
   function cancel(){cancelled=true;if(handle){unschedule(handle);handle=null;}wake?.();cleanup();}
   signal?.addEventListener('abort',cancel,{once:true});
   const check=()=>{if(cancelled||signal?.aborted||renderer.getContext().isContextLost())throw new DOMException('Warmup cancelled','AbortError');};
+  async function pause(ms){
+    check();await new Promise(resolve=>{wake=resolve;handle={id:setTimeout(()=>{handle=null;wake=null;resolve();},ms),idle:false};});check();
+  }
   async function turn(){
     check();await new Promise(resolve=>{
       wake=resolve;const resume=deadline=>{
@@ -24,7 +27,7 @@ export function createSceneWarmup(renderer,scene,camera,{signal,textures=[],onRe
       };handle=schedule(resume);
     });check();
     // A background tab need not consume GPU time. Cancellation still wakes it.
-    while(globalThis.document?.hidden){await new Promise(resolve=>{wake=resolve;handle={id:setTimeout(()=>{handle=null;wake=null;resolve();},250),idle:false};});check();}
+    while(globalThis.document?.hidden)await pause(250);
   }
   function work(fn){check();const start=performance.now();try{return fn();}finally{stats.tasks++;stats.maxTaskMs=Math.max(stats.maxTaskMs,performance.now()-start);}}
   async function compile(objects,transmission=false){
@@ -39,7 +42,13 @@ export function createSceneWarmup(renderer,scene,camera,{signal,textures=[],onRe
       // Same non-blocking completion check as the bundled compileAsync, but
       // owned here so context loss/retry can cancel polling before disposal.
       const programs=[...renderer.info.programs];
-      while(true){check();if(programs.every(program=>program.isReady()))break;await turn();}
+      while(true){
+        check();if(globalThis.document?.hidden){await pause(250);continue;}
+        if(programs.every(program=>program.isReady()))break;
+        // Completion polling is cheap; an idle-budget wait here can starve
+        // preparation during scrolling even after the GPU has finished.
+        await pause(10);
+      }
     }
   }
   const done=(async()=>{
