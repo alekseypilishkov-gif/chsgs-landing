@@ -76,7 +76,10 @@ vec3 waterNormal(vec3 n,vec3 p){float a=waterBend(p.x);return vec3(cos(a)*n.x-si
     root.visible=fluid.volume>0&&state.cutaway>0;surface.visible=fluid.ratio>0&&fluid.ratio<1-1e-7;
     if(root.visible&&!state.reduced)opticalTime+=Math.max(0,Math.min(dt,.05));
     levels.set(fluid.heights);texture.needsUpdate=true;uniforms.uFront.value=fluid.front;uniforms.uPhase.value=opticalTime*1.2;
-    const downstreamMoving=through?.update({opening:state.valveOpening||0,feeding:!!state.flowRequested&&fluid.ratio>=1-1e-7,cutaway:state.cutaway,reduced:state.reduced},dt)||false;
+    // Scroll chooses the actuator's goal; the actual aperture sets discharge
+    // throughout both opening and closing. Retain supply while it narrows.
+    const opening=state.valveOpening||0;
+    const downstreamMoving=through?.update({opening,feeding:opening>0&&fluid.ratio>=1-1e-7,cutaway:state.cutaway,reduced:state.reduced},dt)||false;
     return moving||downstreamMoving;
   }
   const displayPoint=(x,y,z=0)=>{if(!route||x>=route.start)return new THREE.Vector3(x,y,z);const p=route.sample(route.start-x);return new THREE.Vector3(p.x+p.nx*y,p.y+p.ny*y,z);};

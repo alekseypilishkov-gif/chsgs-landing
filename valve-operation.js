@@ -1,6 +1,6 @@
 import {clamp,waterEnd,openingStart} from './motion.js';
 
-// A reverse gesture closes immediately, even within the opening chapter.
+// A reverse gesture starts closing, even within the opening chapter.
 // Ignore sub-pixel scroll rounding when layout or viewport size changes.
 export function openingIntentAt(intent,previous,next,ready){
   if(!ready||next<openingStart)return false;
@@ -11,9 +11,10 @@ export function openingIntentAt(intent,previous,next,ready){
 export const handwheelTurns=100;
 export const handwheelTravel=handwheelTurns*Math.PI*2;
 export const actuationDuration=6;
-// Source position is open. Closing turns the wheel clockwise, opening turns
-// it counterclockwise, seen from the operator facing the handwheel.
-export const handwheelAngle=(closed,opened=0)=>handwheelTravel*closed*(opened-1);
+// Only the working actuator turns the wheel. Preparing the closed ball after
+// assembly leaves the source wheel orientation untouched. Opening turns it
+// counterclockwise, closing clockwise, seen from the operator side.
+export const handwheelAngle=(opened=0)=>handwheelTravel*opened;
 
 // Integrate a short smooth acceleration/deceleration and constant middle
 // speed. The ball moves throughout the drive instead of finishing early.

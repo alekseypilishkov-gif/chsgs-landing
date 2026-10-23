@@ -1,8 +1,8 @@
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
 const areaBelow=(r,h)=>h<=-r?0:h>=r?Math.PI*r*r:r*r*Math.acos(-h/r)+h*Math.sqrt(Math.max(0,r*r-h*h));
 
-// Conservative transport of the volume already downstream of the valve.
-// The inlet flux can stop immediately while the stored water keeps draining.
+// Conservative transport downstream of the valve. Inlet flux follows the
+// actual opening on both strokes; stored water drains after complete closure.
 // Transport speed is a presentation parameter, not a hydraulic model.
 export class FlowChannel{
   constructor({end,radius=.4055,boreRadius=.3895,cells=144,route=null,speed=2.6}){
