@@ -11,7 +11,10 @@ export function resolveProfile(data,url){
   if(!camera||!(camera.fov>0&&camera.fov<120)||!(camera.near>0&&camera.far>camera.near)||!Array.isArray(camera.automaticDirection)||camera.automaticDirection.length!==3||!camera.automaticDirection.every(Number.isFinite)||!(camera.automaticDirection[2]>0)||!['desktop','mobile'].every(k=>Number.isFinite(camera.margin?.[k])&&camera.margin[k]>=1)||!Number.isFinite(camera.mobileExplodedRotation))throw Error('Invalid product camera');
   if(!(data.wireOpacity>0&&data.wireOpacity<=1))throw Error('Invalid wire opacity');
   const local=path=>{if(typeof path!=='string'||!path)throw Error('Missing product resource');const result=new URL(path,url);if(result.origin!==new URL(url).origin)throw Error('Product resources must be same-origin');return result.href;};
-  return {...data,url:String(url),adapterURL:local(data.adapter),assetURLs:Object.fromEntries(['model','drawing','fallback'].map(key=>[key,local(data.assets?.[key])]))};
+  if(data.assets?.prepared&&!/^[a-f0-9]{64}$/.test(data.preparedSHA256||''))throw Error('Missing prepared revision');
+  const assets=Object.fromEntries(['model','drawing','fallback'].map(key=>[key,local(data.assets?.[key])]));
+  if(data.assets?.prepared)assets.prepared=local(data.assets.prepared)+'?v='+data.preparedSHA256;
+  return {...data,url:String(url),adapterURL:local(data.adapter),assetURLs:assets};
 }
 export async function loadProfile(url){
   const response=await fetch(url);if(!response.ok)throw Error('Product profile '+response.status);

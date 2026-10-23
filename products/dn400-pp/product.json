@@ -21,12 +21,25 @@
   "cutaway": true,
   "water": true,
   "opening": true,
-  "installation": {"direction":[0,0.1,1.8],"frameMargin":1.14,"pipeLength":3.3,"elbow":{"radius":0.95,"straight":0.65}},
+  "installation": {
+    "direction": [
+      0,
+      0.1,
+      1.8
+    ],
+    "frameMargin": 1.14,
+    "pipeLength": 3.3,
+    "elbow": {
+      "radius": 0.95,
+      "straight": 0.65
+    }
+  },
   "adapter": "model.js",
   "assets": {
     "model": "valve.glb",
     "drawing": "draft-paths.json",
-    "fallback": "draft.svg"
+    "fallback": "draft.svg",
+    "prepared": "display.bin.gz"
   },
   "camera": {
     "fov": 34,
@@ -47,5 +60,6 @@
   "source": {
     "stepSHA256": "7560c1c442b90714cc41e7ddc1d3dea2b14519a77e3e33f7ff4bd42b05791d69",
     "dwgSHA256": "228807630a0d83e36dc331523587db32c5be73362a0a1db3c91b9b7036cebb7c"
-  }
+  },
+  "preparedSHA256": "16a28e426502aef2a0822f7311552d5885e0c76296feaa83413f7ceffb496875"
 }

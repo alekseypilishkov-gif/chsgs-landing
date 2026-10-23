@@ -127,7 +127,7 @@ function continuousSectionGeometry(entries,parent,{radius:boreRadius,innerEnd,ou
   const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));parent.updateWorldMatrix(true,false);geometry.applyMatrix4(parent.matrixWorld.clone().invert());geometry.computeVertexNormals();geometry.computeBoundingBox();geometry.userData.section={continuous:true,sourceCaps:entries.length,slabs:slabs.length,bridged};return geometry;
 }
 
-export function createCutaway(groups,{bore=null,interiorFinish=null,connections=[],routes=[]}={}){
+export function createCutaway(groups,{bore=null,interiorFinish=null,connections=[],routes=[],prepared=null}={}){
   const passage=passageField(routes),field=passage.shader;
   const uniforms={uSectionEnabled:{value:0},uSectionX:{value:0}},bounds=new THREE.Box3(),entries=[],interiors=[],offsets=new Map();
   for(const group of groups){
@@ -146,12 +146,12 @@ export function createCutaway(groups,{bore=null,interiorFinish=null,connections=
         const layer=new THREE.Mesh(mesh.geometry,material);layer.name=group.id+'-section-interior';layer.matrix.copy(mesh.matrix);layer.matrixAutoUpdate=false;layer.visible=false;layer.renderOrder=1;group.parent.add(layer);interiors.push(layer);
       }
     }
-    const geometry=sectionCapGeometry(group.meshes,{boreRadius:group.pipeBore?bore?.radius:0}),material=new THREE.MeshStandardMaterial({color:0xb7bdc5,metalness:.65,roughness:.34,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+    const geometry=prepared?.section?prepared.section(group.id):sectionCapGeometry(group.meshes,{boreRadius:group.pipeBore?bore?.radius:0}),material=new THREE.MeshStandardMaterial({color:0xb7bdc5,metalness:.65,roughness:.34,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
     bindSection(material,uniforms,{cap:true,field});const cap=new THREE.Mesh(geometry,material);cap.name=group.id+'-section-face';cap.renderOrder=3;cap.visible=false;group.parent.add(cap);
     entries.push({id:group.id,cap,stats:geometry.userData.section});
   }
   let cap=null;
-  if(bore){const geometry=continuousSectionGeometry(entries,bore.parent,bore);cap=new THREE.Mesh(geometry,entries[0].cap.material);cap.name='continuous-longitudinal-section';cap.visible=false;cap.renderOrder=3;for(const entry of entries)entry.cap.removeFromParent();bore.parent.add(cap);}
+  if(bore){const geometry=prepared?.section?prepared.section('continuous'):continuousSectionGeometry(entries,bore.parent,bore);cap=new THREE.Mesh(geometry,entries[0].cap.material);cap.name='continuous-longitudinal-section';cap.visible=false;cap.renderOrder=3;for(const entry of entries)entry.cap.removeFromParent();bore.parent.add(cap);}
   const liners=[];
   if(bore)for(const [a,b] of [[Math.max(bounds.min.x,-(bore.outerEnd??Infinity)),-bore.innerEnd],[bore.innerEnd,Math.min(bounds.max.x,bore.outerEnd??Infinity)]]){
     const geometry=new THREE.CylinderGeometry(bore.radius,bore.radius,b-a,96,1,true);geometry.rotateZ(Math.PI/2);geometry.translate((a+b)/2,0,0);

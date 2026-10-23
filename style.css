@@ -31,3 +31,4 @@ button:focus-visible,a:focus-visible{outline-color:var(--accent)}::selection{bac
 .scene-footer[hidden],.scroll-progress[hidden]{display:none}
 .canvas-wrap{bottom:24px}
 @media(max-width:600px){.canvas-wrap{bottom:16px}}
+.experience[data-state=drawing] canvas{opacity:1}.experience[data-state=drawing] .fallback{display:none}

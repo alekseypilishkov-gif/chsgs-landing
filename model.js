@@ -70,7 +70,7 @@ export function drawnWire(geometry){
   const material=new THREE.ShaderMaterial({transparent:true,depthWrite:false,depthTest:true,uniforms:{uDraw:{value:0},uOpacity:{value:.18},uColor:{value:new THREE.Color(0xc9ccd4)}},vertexShader:'attribute float linePosition;varying float vLine;void main(){vLine=linePosition;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',fragmentShader:'uniform float uDraw;uniform float uOpacity;uniform vec3 uColor;varying float vLine;void main(){if(vLine>uDraw)discard;gl_FragColor=vec4(uColor,uOpacity);}'});
   const wire=new THREE.LineSegments(geometry,material);wire.renderOrder=2;return wire;
 }
-export function createDisplayModel(materials,paths={}){
+export function createDisplayModel(materials,paths={},prepared=null){
   const root=new THREE.Group();const parts=[];
   const createPart=(id,offset,stagger=0)=>{const group=new THREE.Group();group.name=id;root.add(group);const p={id,group,offset:new THREE.Vector3(...offset),path:partPath(id,offset,paths),stagger,solids:[],wires:[],occluders:[]};parts.push(p);return p;};
   function add(part,geometry,material='paint',grid=null,options={}){
@@ -86,9 +86,16 @@ export function createDisplayModel(materials,paths={}){
     surface.customProgramCacheKey=()=> 'source-surface-reveal-v1';}
     const mesh=new THREE.Mesh(geometry,Array.isArray(material)?surfaces:surfaces[0]);mesh.name=part.id+(options.finalDetail?'-weld':'-surface');mesh.renderOrder=1;part.group.add(mesh);part.solids.push({mesh,reveal,edge,finalDetail:!!options.finalDetail});
     if(options.wire===false)return mesh;
-    const edges=new THREE.EdgesGeometry(geometry,19).attributes.position.array;
-    const iso=(grid||surfaceGrid(geometry)).attributes.position.array;
-    const lines=new Float32Array(edges.length+iso.length);lines.set(edges);lines.set(iso,edges.length);
+    const key=part.id+'/'+part.wires.length;
+    let lines;
+    if(prepared?.wire)lines=prepared.wire(key,geometry,grid);
+    else {
+      const edgeGeometry=new THREE.EdgesGeometry(geometry,19),edges=edgeGeometry.attributes.position.array;
+      const iso=(grid||surfaceGrid(geometry)).attributes.position.array;
+      prepared?.captureWire?.(key,geometry,grid,edges,iso);
+      lines=new Float32Array(edges.length+iso.length);lines.set(edges);lines.set(iso,edges.length);
+      edgeGeometry.dispose();
+    }
     const wire=drawnWire(lineGeometry(lines));part.group.add(wire);part.wires.push(wire);
     return mesh;
   }

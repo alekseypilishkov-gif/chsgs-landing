@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {RoomEnvironment} from './vendor/RoomEnvironment.js';
 import {readCAD} from './model.js';
+import {decodePreparedDisplay,createDrawingFrame} from './prepared-display.js';
 import {loadProfile} from './product-profile.js';
 import {clamp,smooth,stateAt,pathPosition,dragYaw,cameraTurns,stops,titles,chapter,follow,response,pointerParallax,scrollAtTimeline,timelineAtScroll,installationEnd,cutawayEnd,waterEnd,openingEnd,rotationAllowed} from './motion.js';
 import {FillScrollGate,openingIntentAt} from './valve-operation.js';
@@ -9,7 +10,7 @@ const section=document.querySelector('#experience'),canvas=document.querySelecto
 const chapterTitle=document.querySelector('#chapter-title'),intro=document.querySelector('#intro'),loadCopy=document.querySelector('#load-copy'),retry=document.querySelector('#retry');
 const buttons=[...document.querySelectorAll('[data-stop]')];
 const motionQuery=matchMedia('(prefers-reduced-motion: reduce)');
-let renderer,scene,camera,product,profile,draft,draftGuide,environment,frame=0,current=0,target=0,lastTime=0,ready=false,visible=true,reduced=motionQuery.matches;
+let renderer,scene,camera,product,profile,draft,draftGuide,environment,frame=0,current=0,target=0,lastTime=0,ready=false,drawingReady=false,visible=true,reduced=motionQuery.matches;
 let lastChapter=-1,renderCount=0,sizeDirty=true,abort=new AbortController();
 let reflectionTargets=[];
 let sequenceEnd=1,sequenceStops=stops;
@@ -66,7 +67,9 @@ async function initialize(){
     sequenceEnd=profile.opening?openingEnd:profile.water?waterEnd:profile.cutaway?cutawayEnd:profile.installation?installationEnd:1;sequenceStops=[...stops,...(profile.installation?[installationEnd]:[]),...(profile.cutaway?[cutawayEnd]:[]),...(profile.water?[waterEnd]:[]),...(profile.opening?[openingEnd]:[])];
     section.style.setProperty('--story-length',String(sequenceEnd+.16));section.style.setProperty('--reduced-length',String(sequenceEnd));
     document.querySelector('button[data-installation]').hidden=!profile.installation;document.querySelector('button[data-cutaway]').hidden=!profile.cutaway;document.querySelector('button[data-water]').hidden=!profile.water;document.querySelector('button[data-opening]').hidden=!profile.opening;updateTarget();
-    const [{createProduct},buffer,paths]=await Promise.all([import(profile.adapterURL),fetchBuffer(profile.assetURLs.model),fetch(profile.assetURLs.drawing,{signal:abort.signal}).then(r=>{if(!r.ok)throw Error('Drawing');return r.json();})]);
+    // Start the large model transfer without making the DWG wait for it.
+    const modelBuffer=fetchBuffer(profile.assetURLs.model);modelBuffer.catch(()=>{});
+    const [{createProduct,createProductAsync},paths,prepared]=await Promise.all([import(profile.adapterURL),fetch(profile.assetURLs.drawing,{signal:abort.signal}).then(r=>{if(!r.ok)throw Error('Drawing');return r.json();}),profile.assetURLs.prepared?fetch(profile.assetURLs.prepared,{signal:abort.signal}).then(r=>{if(!r.ok)throw Error('Prepared display '+r.status);return r.arrayBuffer();}).then(b=>decodePreparedDisplay(b,{id:profile.id,source:profile.source.stepSHA256})):null]);
     document.querySelectorAll('.product-name span').forEach((node,i)=>node.textContent=i?profile.designation:profile.name);
     document.querySelector('.brand span').textContent=profile.brand;
     section.setAttribute('aria-label',profile.sectionLabel);canvas.setAttribute('aria-label',profile.canvasLabel);
@@ -75,13 +78,22 @@ async function initialize(){
     renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'high-performance'});
     renderer.setPixelRatio(Math.min(devicePixelRatio||1,innerWidth<600?1.5:2));renderer.setClearColor(0x262626,1);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
     scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(profile.camera.fov,1,profile.camera.near,profile.camera.far);
+    draft=makeDraft(paths);scene.add(draft);
+    draftGuide=new THREE.LineSegments(draft.geometry,draft.material.clone());draftGuide.material.uniforms.uDraw.value=1;draftGuide.renderOrder=3;scene.add(draftGuide);
+    if(prepared?.manifest.framing){
+      product=createDrawingFrame(prepared);scene.add(product.root);drawingReady=true;section.dataset.state='drawing';section.dataset.drawingReady='true';sizeDirty=true;requestRender();
+    }
+    const buffer=await modelBuffer;
+    await new Promise(resolve=>setTimeout(resolve,0));
     const pmrem=new THREE.PMREMGenerator(renderer),room=new RoomEnvironment();
     room.traverse(object=>{if(object.isMesh&&object.material?.isMeshStandardMaterial)object.material.color.setHex(0x303339);});
     environment=pmrem.fromScene(room,.035);room.dispose();scene.environment=environment.texture;scene.environmentIntensity=.9;
     scene.add(new THREE.HemisphereLight(0xffffff,0x292d36,1.25));
     const key=new THREE.DirectionalLight(0xfffcf2,3);key.position.set(-3,5,5);scene.add(key);
     const rim=new THREE.DirectionalLight(0xe1edf7,3);rim.position.set(4,2,-3);scene.add(rim);
-    product=createProduct(readCAD(buffer),profile.installation,profile.cutaway,profile.water,profile.opening);
+    const complete=await (createProductAsync||createProduct)(readCAD(buffer),profile.installation,profile.cutaway,profile.water,profile.opening,prepared,{signal:abort.signal});
+    if(drawingReady)product.root.removeFromParent();product=complete;drawingReady=false;
+    section.dataset.preparation=JSON.stringify(product.preparation||null);
     if(profile.installation&&!product.installation)throw Error('Product needs an installation adapter');
     if(profile.cutaway&&!product.cutaway)throw Error('Product needs a cutaway adapter');
     if(profile.water&&!product.water)throw Error('Product needs a water adapter');
@@ -94,11 +106,10 @@ async function initialize(){
       const target=pmrem.fromScene(studio,settings.blur??.02);reflectionTargets.push(target);studio.dispose();
       product.root.traverse(object=>{if(object.isMesh)for(const surface of Array.isArray(object.material)?object.material:[object.material])if(surface.userData.reflectionEnvironment===id)surface.envMap=target.texture;});
     }
-    pmrem.dispose();scene.add(product.root);draft=makeDraft(paths);scene.add(draft);
-    draftGuide=new THREE.LineSegments(draft.geometry,draft.material.clone());draftGuide.material.uniforms.uDraw.value=1;draftGuide.renderOrder=3;scene.add(draftGuide);
+    pmrem.dispose();scene.add(product.root);
     ready=true;updateTarget();section.dataset.state='ready';loadFill.style.width='100%';current=target;sizeDirty=true;
     requestRender();
-  }catch(error){fillGate.reset();if(error.name==='AbortError')return;console.error('Model initialization failed',error);section.dataset.state='error';loadCopy.textContent='Не удалось загрузить 3D-модель';retry.hidden=false;}
+  }catch(error){drawingReady=false;fillGate.reset();if(error.name==='AbortError')return;console.error('Model initialization failed',error);section.dataset.state='error';loadCopy.textContent='Не удалось загрузить 3D-модель';retry.hidden=false;}
 }
 function resetParallax(){parallaxTarget.x=0;parallaxTarget.y=0;requestRender();}
 function resize(){sizeDirty=true;lastChapter=-1;if(ready)window.scrollTo({top:nativeTop(target),behavior:'instant'});resetParallax();}
@@ -150,7 +161,7 @@ function render(time){
   current=reduced?target:follow(current,target,dt,target>.84||current>.84?response.assembly:response.scroll);
   parallax.x=reduced?0:follow(parallax.x,parallaxTarget.x,dt,response.parallax,.01);
   parallax.y=reduced?0:follow(parallax.y,parallaxTarget.y,dt,response.parallax,.01);
-  const state=stateAt(current,reduced),rotatable=rotationAllowed(state,target),mounting=state.chapter>=5||chapter(target)>=5;section.dataset.progress=current.toFixed(5);
+  const state=stateAt(drawingReady?Math.min(current,.18):current,reduced),rotatable=rotationAllowed(state,target),mounting=state.chapter>=5||chapter(target)>=5;section.dataset.progress=current.toFixed(5);
   if(!rotatable&&pointer)endDrag({pointerId:pointer.id});
   if(mounting)targetYaw=0;
   yaw=reduced?targetYaw:follow(yaw,targetYaw,dt,response.rotation,.0001);
@@ -158,7 +169,7 @@ function render(time){
   fill.style.width=(current/sequenceEnd*100)+'%';intro.style.opacity=state.intro;intro.style.transform=`translateY(${-state.progress*90}px)`;
   const cue=document.querySelector('#cue-copy');cue.textContent=current>sequenceEnd-.03?'Начать заново':'Продолжайте скролл';
   let fluidMoving=false,operationMoving=false;
-  if(ready){
+  if(ready||drawingReady){
     const mobile=wrap.clientWidth<600;
     if(sizeDirty){sizeDirty=false;renderer.setSize(wrap.clientWidth,wrap.clientHeight,false);}
     product.root.visible=state.wireDraw>0||state.material>0;
@@ -169,7 +180,7 @@ function render(time){
     operationMoving=!!product.update?.(state,dt);
     product.cutaway?.update(state);
     fluidMoving=product.water?.update(state,dt)||false;
-    if(profile.water)fillGate.update({ratio:product.water.fluid.ratio,cutaway:state.cutaway,target});
+    if(ready&&profile.water)fillGate.update({ratio:product.water.fluid.ratio,cutaway:state.cutaway,target});
     section.dataset.scrollLocked=String(fillGate.locked);section.dataset.fillGate=fillGate.phase;
     for(const part of product.parts){
       const amount=reduced?(state.chapter===2||state.chapter===3?1:0):state.explode;

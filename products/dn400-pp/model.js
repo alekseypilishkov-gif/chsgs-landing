@@ -31,8 +31,24 @@ function latheGrid(sample,from,to,steps=12,meridians=24){
   for(let j=0;j<meridians;j++){const t=TAU*j/meridians;for(let k=0;k<50;k++){const x=from+(to-from)*k/50,n=from+(to-from)*(k+1)/50;a.push(...point(x,t),...point(n,t));}}
   return lineGeometry(a);
 }
-export function createProduct(cad,installationSettings=null,cutawayEnabled=false,waterEnabled=false,openingEnabled=false){
-  const {root,parts,createPart,add}=createDisplayModel(materials,extractionPaths);
+export function createProduct(...args){
+  const steps=buildProduct(...args);let result;do{result=steps.next();}while(!result.done);return result.value;
+}
+export async function createProductAsync(cad,installation,cutaway,water,opening,prepared,{signal,yieldTask=()=>new Promise(resolve=>setTimeout(resolve,0)),budget=8}={}){
+  const steps=buildProduct(cad,installation,cutaway,water,opening,prepared);
+  const preparation={activeMs:0,maxTaskMs:0,tasks:0};
+  try{
+    while(true){
+      await yieldTask();if(signal?.aborted)throw new DOMException('Preparation aborted','AbortError');
+      const start=performance.now();let result;
+      do{result=steps.next();}while(!result.done&&result.value!=='task'&&performance.now()-start<budget);
+      const elapsed=performance.now()-start;preparation.activeMs+=elapsed;preparation.maxTaskMs=Math.max(preparation.maxTaskMs,elapsed);preparation.tasks++;
+      if(result.done){result.value.preparation=preparation;return result.value;}
+    }
+  }finally{steps.return();}
+}
+function* buildProduct(cad,installationSettings=null,cutawayEnabled=false,waterEnabled=false,openingEnabled=false,prepared=null){
+  const {root,parts,createPart,add}=createDisplayModel(materials,extractionPaths,prepared);
   const weldOptions={finalDetail:true,wire:false};
   function splitWelds(part,geometry,ids){
     const welds=new Set(ids);
@@ -44,11 +60,13 @@ export function createProduct(cad,installationSettings=null,cutawayEnabled=false
   splitWelds(body,cad.get('body'),[162,3495,3496]);
   // Close only the hidden weld interfaces removed by the fused source export.
   for(const side of [-1,1]){const cap=revolved([[side*.660547502,.426],[side*.692697885,.45]]);add(body,cap,'bluePaint');}
+  yield;
   for(const side of [-1,1]){
     const name=side<0?'left':'right';const flange=createPart(name+'-flange',[side*3.3,0,0]);
     add(flange,coatedFlange(cad.get(name+'-flange')),['bluePaint','steel']);
     const inlet=new THREE.CylinderGeometry(.406,.406,.060,80,1,true);inlet.rotateZ(Math.PI/2);inlet.translate(side*(.882+.030),0,0);add(flange,inlet,'steel');
     const mating=annulus(.406,.44,.001);mating.translate(side*.882,0,0);add(flange,mating,'steel');
+    yield;
     const patrubok=createPart(name+'-pipe',[side*2.5,0,0]);splitWelds(patrubok,cad.get(name+'-pipe'),side<0?[3619,3621]:[3497,3499]);
     const start=side<0?-.6927:.523,end=side<0?-.523:.6927;
     const sleeve=new THREE.CylinderGeometry(.426,.426,end-start,80,1,true);sleeve.rotateZ(Math.PI/2);sleeve.translate((start+end)/2,0,0);add(patrubok,sleeve,'bluePaint');
@@ -56,6 +74,7 @@ export function createProduct(cad,installationSettings=null,cutawayEnabled=false
     pipePatch(patrubok,side,.692697886,.722697886);pipePatch(patrubok,side,.869037390,.882);
     const insideTube=new THREE.CylinderGeometry(.406,.406,.359,80,1,true);insideTube.rotateZ(Math.PI/2);insideTube.translate(side*(.523+.359/2),0,0);add(patrubok,insideTube,'steel');
     for(const x of [.523,.882]){const lip=annulus(.406,.426,.001);lip.translate(side*x,0,0);add(patrubok,lip,'steel');}
+    yield;
   }
   const ball=createPart('ball',[-.85,0,.06],.025);add(ball,cad.get('ball'),'stainless',latheGrid(x=>Math.sqrt(.596**2-x*x),-.40605128,.40605128,10,24));
   // Preserve the source hollow sphere and drive slot, closing only interfaces
@@ -76,6 +95,7 @@ export function createProduct(cad,installationSettings=null,cutawayEnabled=false
     for(let i=0;i<24;i++){const a=TAU*i/24;lines.push(side*mouthX,mouthRadius*Math.cos(a),mouthRadius*Math.sin(a),side*boreEnd,boreRadius*Math.cos(a),boreRadius*Math.sin(a));}
     add(ball,bevel,'stainless',lineGeometry(lines));
   }
+  yield;
   const neck=createPart('neck',[-1,.65,.12]);splitWelds(neck,cad.get('neck-tube'),[164]);
   for(const [a,b] of [[.621902,.659974720],[.840494026,.864]]){const tube=revolved([[a,.13],[b,.13]],'y');add(neck,tube,'bluePaint');}
   const adapter=createPart('adapter',[1,.65,-.1]);const adapterGeometry=cad.get('neck-adapter');
@@ -84,6 +104,7 @@ export function createProduct(cad,installationSettings=null,cutawayEnabled=false
   add(adapter,selectCADFaces(adapterGeometry,id=>id!==165&&id!==230),'steel');
   const neckLiner=new THREE.CylinderGeometry(.102,.102,.242098,64,1,true);neckLiner.translate(0,.742951,0);add(neck,neckLiner,'steel');
   for(const y of [.621902,.864]){const end=annulus(.102,.13,.001,'y');end.translate(0,y,0);add(neck,end,'steel');}
+  yield;
   const gearbox=createPart('gearbox',[0,1.05,-.08],-.04);add(gearbox,cad.get('gearbox'),'gear');
   const wheel=createPart('handwheel',[0,1.05,-.08],-.04);add(wheel,cad.get('handwheel'),'gear');
   const rim=drawnWire(wheelGrid());wheel.group.add(rim);wheel.wires.push(rim);
@@ -91,6 +112,7 @@ export function createProduct(cad,installationSettings=null,cutawayEnabled=false
   for(const child of [...wheel.group.children]){wheelPivot.add(child);child.position.sub(wheelPivot.position);}
   wheel.group.add(wheelPivot);wheel.frameInGroup=true;
   const shaftCap=new THREE.CylinderGeometry(.02,.02,.008,32);shaftCap.rotateX(Math.PI/2);shaftCap.translate(-.362,1.019,.619);add(gearbox,shaftCap,'steel');
+  yield;
   const stem=createPart('stem',[0,.6,.2],.04);add(stem,cad.get('stem-bottom'),'steel');const shaft=new THREE.CylinderGeometry(.072,.072,.31,48);shaft.translate(0,.755,0);add(stem,shaft,'steel');
   for(const side of [-1,1]){
     // ENERGY DN250-400 PP: retain the seat, backup seal, support and wave spring.
@@ -102,6 +124,7 @@ export function createProduct(cad,installationSettings=null,cutawayEnabled=false
       if(id==='spring')geo=waveAnnulus(inner,outer,thickness);
       else geo=annulus(inner,outer,thickness);
       geo.translate(side*x,0,0);add(part,geo,material);
+      yield;
     }
   }
   // Visual ordering and finish tones follow the manufacturer's exploded image.
@@ -118,10 +141,11 @@ export function createProduct(cad,installationSettings=null,cutawayEnabled=false
     ['spacer-upper',.094,.014,.90,[.44,.70,.2],'steel'],
     ['retaining-ring',.094,.012,.918,[.44,.80,.2],'seat'],
   ];
-  for(const [id,radius,thickness,y,offset,material] of stemStack){const part=createPart('stem-'+id,offset);const geo=annulus(.072,radius,thickness,'y');geo.translate(0,y,0);add(part,geo,material);}
+  for(const [id,radius,thickness,y,offset,material] of stemStack){const part=createPart('stem-'+id,offset);const geo=annulus(.072,radius,thickness,'y');geo.translate(0,y,0);add(part,geo,material);yield;}
   const springPart=createPart('stem-spring',[-.4,.95,.16]);
   const coil=new THREE.CatmullRomCurve3(Array.from({length:97},(_,i)=>{const t=i/96;return new THREE.Vector3(.085*Math.cos(TAU*3*t),.94+.10*t,.085*Math.sin(TAU*3*t));}));
   add(springPart,new THREE.TubeGeometry(coil,96,.007,8,false),'spring');
+  yield;
   let installation=null;
   if(installationSettings){
     const part=id=>parts.find(part=>part.id===id);
@@ -132,6 +156,7 @@ export function createProduct(cad,installationSettings=null,cutawayEnabled=false
       if(surface.color.getHex()===materials.bluePaint.color){surface.setValues(pipelineFinish);surface.userData.reflectionEnvironment='polishedSteel';}
     }
     root.add(installation.root);
+    yield;
   }
   let cutaway=null;
   if(cutawayEnabled){
@@ -141,7 +166,8 @@ export function createProduct(cad,installationSettings=null,cutawayEnabled=false
     groups.push(...installation.units.map(unit=>({id:unit.root.name,parent:unit.root,meshes:unit.solids,pipeBore:!unit.route})));
     const connections=installation.joints.map(joint=>{const flange=installation.units.find(unit=>unit.kind==='flange'&&unit.side===joint.side);return {x:(joint.valveFace+joint.joint)/2,outerRadius:Math.max(Math.abs(flange.bounds.min.y),Math.abs(flange.bounds.max.y))};});
     const outerEnd=installationSettings.elbow?Math.abs(installation.joints[0].pipeStart):undefined;
-    cutaway=createCutaway(groups,{bore:{radius:.406,innerEnd:.523,outerEnd,parent:root,material:materials.steel},interiorFinish:materials.stainless,connections,routes:installation.units.map(unit=>unit.route).filter(Boolean)});
+    cutaway=createCutaway(groups,{bore:{radius:.406,innerEnd:.523,outerEnd,parent:root,material:materials.steel},interiorFinish:materials.stainless,connections,routes:installation.units.map(unit=>unit.route).filter(Boolean),prepared});
+    yield 'task';
   }
   let water=null;
   if(waterEnabled){
@@ -149,6 +175,7 @@ export function createProduct(cad,installationSettings=null,cutawayEnabled=false
     const inlet=installation.joints.find(joint=>joint.side<0);
     const outlet=installation.joints.find(joint=>joint.side>0);
     water=createInletWater({start:inlet.pipeEnd,route:inlet.route,radius:.4055,ballRadius:.596,section:cutaway.uniforms,outlet:openingEnabled?{end:outlet.pipeEnd,route:outlet.route}:null});root.add(water.root);
+    yield;
   }
   if(openingEnabled&&!water)throw Error('Valve opening requires inlet water');
   const operation=openingEnabled?new QuarterTurn():null;
