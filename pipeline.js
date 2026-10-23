@@ -1,5 +1,6 @@
 import * as THREE from './vendor/three.module.js';
 import {elbowPath,sweptTube,elbowGrid} from './elbow.js';
+import {createFlangeConnection} from './flange-connection.js';
 
 function boundsOf(part){
   const box=new THREE.Box3();
@@ -67,7 +68,7 @@ function regularPipeGrid(unit,length,step=.18){
 
 // Context geometry is kept outside the valve's exploded-part inventory.
 // Opposite-side source parts already face the mating joint correctly.
-export function createPipeline(sides,{length=2.8,gap=.004,matingInset=0,elbow=null,innerRadius=.406,outerRadius=.426}={}){
+export function createPipeline(sides,{length=2.8,gap=.004,matingInset=0,elbow=null,innerRadius=.406,outerRadius=.426,connection=null}={}){
   if(!(length>0)||!(gap>=0)||!(matingInset>=0))throw Error('Invalid pipeline dimensions');
   const root=new THREE.Group();root.name='pipeline-context';root.visible=false;
   const units=[],joints=[];
@@ -75,7 +76,7 @@ export function createPipeline(sides,{length=2.8,gap=.004,matingInset=0,elbow=nu
     const source=sides[name],valve=boundsOf(source.valveFlange);
     const flange=copyComponent(source.flangeSource,'flange'),pipe=copyComponent(source.pipeSource,'pipe');
     const face=side<0?flange.bounds.max.x:flange.bounds.min.x,back=side<0?flange.bounds.min.x:flange.bounds.max.x;
-    const valveFace=side<0?valve.min.x:valve.max.x,joint=valveFace+side*(gap-matingInset);
+    const valveFace=side<0?valve.min.x:valve.max.x,valveBack=side<0?valve.max.x:valve.min.x,joint=valveFace+side*(connection?connection.gasketThickness:gap-matingInset);
     flange.root.position.x=joint-face;
     const pipeStart=back+flange.root.position.x,near=side<0?pipe.bounds.max.x:pipe.bounds.min.x,far=side<0?pipe.bounds.min.x:pipe.bounds.max.x;
     const scale=length/(pipe.bounds.max.x-pipe.bounds.min.x);
@@ -97,10 +98,12 @@ export function createPipeline(sides,{length=2.8,gap=.004,matingInset=0,elbow=nu
       pipe.root.scale.set(1,1,1);pipe.root.position.set(0,0,0);pipe.solids=[mesh];pipe.wires=[wire];pipe.bounds.copy(geometry.boundingBox);pipe.route=route;pipe.outerRadius=outerRadius;pipe.innerRadius=innerRadius;
     }else regularPipeGrid(pipe,length);
     for(const unit of [flange,pipe]){unit.side=side;unit.root.name='pipeline-'+name+'-'+unit.kind;root.add(unit.root);units.push(unit);}
-    joints.push({side,valveFace,joint,pipeStart,pipeEnd:pipeStart+side*length,route:pipe.route||null});
+    joints.push({side,valveFace,valveBack,joint,pipeStart,pipeEnd:pipeStart+side*length,route:pipe.route||null});
   }
+  const fastening=connection?createFlangeConnection(joints,connection):null;if(fastening)root.add(fastening.root);
   function update(state){
-    root.visible=state.flangeWire>0||state.flangeSolid>0||state.pipeWire>0||state.pipeSolid>0;
+    root.visible=state.gasketDraw>0||state.flangeWire>0||state.flangeSolid>0||state.pipeWire>0||state.pipeSolid>0;
+    fastening?.update(state);
     for(const unit of units){
       const wire=unit.kind==='flange'?state.flangeWire:state.pipeWire,solid=unit.kind==='flange'?state.flangeSolid:state.pipeSolid;
       unit.draw.value=wire;unit.reveal.value=solid*1.002-.001;unit.opacity.value=.4*(1-solid);
@@ -108,5 +111,5 @@ export function createPipeline(sides,{length=2.8,gap=.004,matingInset=0,elbow=nu
       for(const mesh of unit.wires)mesh.visible=wire>0&&solid<1;
     }
   }
-  return {root,units,joints,update};
+  return {root,units,joints,fastening,update};
 }

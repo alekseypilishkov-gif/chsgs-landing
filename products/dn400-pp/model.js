@@ -1,6 +1,6 @@
 import * as THREE from '../../vendor/three.module.js';
 import {createDisplayModel,selectCADFaces,revolved,annulus,waveAnnulus,lineGeometry,drawnWire} from '../../model.js';
-import {materials,extractionPaths,reflectionEnvironments,pipelineFinish} from './settings.js';
+import {materials,extractionPaths,reflectionEnvironments,pipelineFinish,flangeConnection} from './settings.js';
 import {createPipeline} from '../../pipeline.js';
 import {createCutaway} from '../../cutaway.js';
 import {createInletWater} from '../../water.js';
@@ -149,8 +149,8 @@ function* buildProduct(cad,installationSettings=null,cutawayEnabled=false,waterE
   let installation=null;
   if(installationSettings){
     const part=id=>parts.find(part=>part.id===id);
-    // Seat the paired .008 raised faces inside the visual joint, closing the outer rim gap.
-    installation=createPipeline({left:{valveFlange:part('left-flange'),flangeSource:part('right-flange'),pipeSource:part('right-pipe')},right:{valveFlange:part('right-flange'),flangeSource:part('left-flange'),pipeSource:part('left-pipe')}},{length:installationSettings.pipeLength??4.2,gap:.0002,matingInset:.016,elbow:installationSettings.elbow});
+    // Place an actual thin gasket between the two raised sealing faces.
+    installation=createPipeline({left:{valveFlange:part('left-flange'),flangeSource:part('right-flange'),pipeSource:part('right-pipe')},right:{valveFlange:part('right-flange'),flangeSource:part('left-flange'),pipeSource:part('left-pipe')}},{length:installationSettings.pipeLength??4.2,connection:{...flangeConnection,finish:materials.bluePaint},elbow:installationSettings.elbow});
     // Match all cloned pipeline exteriors; retain machined steel and the blue valve.
     for(const unit of installation.units)for(const mesh of unit.solids)for(const surface of Array.isArray(mesh.material)?mesh.material:[mesh.material]){
       if(surface.color.getHex()===materials.bluePaint.color){surface.setValues(pipelineFinish);surface.userData.reflectionEnvironment='polishedSteel';}
@@ -164,9 +164,11 @@ function* buildProduct(cad,installationSettings=null,cutawayEnabled=false,waterE
     const shellIds=['body','left-pipe','right-pipe','left-flange','right-flange'];
     const groups=parts.filter(part=>shellIds.includes(part.id)).map(part=>({id:part.id,parent:part.group,meshes:part.solids.map(entry=>entry.mesh),innerFinish:part.id==='body',pipeBore:part.id!=='body'}));
     groups.push(...installation.units.map(unit=>({id:unit.root.name,parent:unit.root,meshes:unit.solids,pipeBore:!unit.route})));
+    groups.push(...installation.fastening.gaskets.map(gasket=>({id:gasket.root.name,parent:gasket.root,meshes:[gasket.solid],pipeBore:true})));
     const connections=installation.joints.map(joint=>{const flange=installation.units.find(unit=>unit.kind==='flange'&&unit.side===joint.side);return {x:(joint.valveFace+joint.joint)/2,outerRadius:Math.max(Math.abs(flange.bounds.min.y),Math.abs(flange.bounds.max.y))};});
     const outerEnd=installationSettings.elbow?Math.abs(installation.joints[0].pipeStart):undefined;
     cutaway=createCutaway(groups,{bore:{radius:.406,innerEnd:.523,outerEnd,parent:root,material:materials.steel},interiorFinish:materials.stainless,connections,routes:installation.units.map(unit=>unit.route).filter(Boolean),prepared});
+    installation.fastening.bindSection(cutaway.uniforms,cutaway.passage.shader);
     yield 'task';
   }
   let water=null;

@@ -6,7 +6,7 @@ export function createSceneWarmup(renderer,scene,camera,{signal,textures=[],onRe
   if(globalThis.requestIdleCallback)return {id:requestIdleCallback(callback,{timeout:250}),idle:true};
   return {id:setTimeout(callback,16),idle:false};
 },unschedule=handle=>handle.idle?cancelIdleCallback(handle.id):clearTimeout(handle.id)}={}){
-  const meshes=[];scene.traverse(object=>{if(object.isMesh)meshes.push(object);});
+  const meshes=[];scene.traverse(object=>{if(object.isMesh||object.userData.warmup)meshes.push(object);});
   const liquid=meshes.filter(mesh=>(Array.isArray(mesh.material)?mesh.material:[mesh.material]).some(material=>material.transmission>0));
   const opaque=meshes.filter(mesh=>!liquid.includes(mesh));
   const scratch=new THREE.WebGLRenderTarget(1,1,{depthBuffer:false});
@@ -35,7 +35,7 @@ export function createSceneWarmup(renderer,scene,camera,{signal,textures=[],onRe
       await turn();
       const proxies=new THREE.Group(),sides=new Map(),target=renderer.getRenderTarget();
       for(const object of objects.slice(i,i+6)){
-        proxies.add(new THREE.Mesh(object.geometry,object.material));
+        proxies.add(object.isInstancedMesh?new THREE.InstancedMesh(object.geometry,object.material,1):object.isLineSegments?new THREE.LineSegments(object.geometry,object.material):new THREE.Mesh(object.geometry,object.material));
         if(transmission)for(const material of Array.isArray(object.material)?object.material:[object.material])if(material.transmission>0&&!sides.has(material)){sides.set(material,material.side);material.side=THREE.BackSide;material.needsUpdate=true;}
       }
       work(()=>{try{if(transmission)renderer.setRenderTarget(scratch);renderer.compile(proxies,camera,scene);}finally{renderer.setRenderTarget(target);for(const [material,side] of sides){material.side=side;material.needsUpdate=true;}}});

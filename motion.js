@@ -3,6 +3,8 @@ export const linear = (p,a,b) => clamp((p-a)/(b-a));
 export const smooth = (p,a,b) => {const t=linear(p,a,b);return t*t*(3-2*t);};
 export const response=Object.freeze({scroll:6,assembly:4,rotation:12,parallax:5,maxShiftY:8,maxPointerYaw:2.5*Math.PI/180});
 const assemblyStart=.84,assemblyEnd=.98,assemblyExtra=.16;
+const mountingHoldStart=1.515,mountingHoldEnd=1.64,mountingTravel=-.10;
+export const timelineSpan=end=>end+assemblyExtra+mountingTravel*linear(end,mountingHoldStart,mountingHoldEnd);
 export const installationEnd=1.64;
 export const cutawayEnd=1.88;
 export const waterEnd=1.94;
@@ -11,14 +13,17 @@ export const openingStart=1.95,openingEnd=2.04;
 // chapters' physical travel. This mapping and its inverse keep stage buttons
 // and reverse scrolling aligned with the same product timeline.
 export function scrollAtTimeline(progress,end=1){
-  const p=clamp(progress,0,end);return (p+assemblyExtra*linear(p,assemblyStart,assemblyEnd))/(end+assemblyExtra);
+  const p=clamp(progress,0,end);return (p+assemblyExtra*linear(p,assemblyStart,assemblyEnd)+mountingTravel*linear(p,mountingHoldStart,mountingHoldEnd))/timelineSpan(end);
 }
 export function timelineAtScroll(progress,end=1){
   const normalized=clamp(progress);if(normalized===0||normalized===1)return normalized*end;
-  const p=normalized*(end+assemblyExtra);
+  let p=normalized*timelineSpan(end);
   if(p<=assemblyStart)return p;
-  if(p>=assemblyEnd+assemblyExtra)return clamp(p-assemblyExtra,0,end);
-  return assemblyStart+(p-assemblyStart)*(assemblyEnd-assemblyStart)/(assemblyEnd-assemblyStart+assemblyExtra);
+  if(p<assemblyEnd+assemblyExtra)return assemblyStart+(p-assemblyStart)*(assemblyEnd-assemblyStart)/(assemblyEnd-assemblyStart+assemblyExtra);
+  p-=assemblyExtra;
+  if(p<=mountingHoldStart)return clamp(p,0,end);
+  if(p>=mountingHoldEnd+mountingTravel)return clamp(p-mountingTravel,0,end);
+  return mountingHoldStart+(p-mountingHoldStart)*(mountingHoldEnd-mountingHoldStart)/(mountingHoldEnd-mountingHoldStart+mountingTravel);
 }
 // Exponential response uses elapsed seconds, so drag/scroll feel the same at
 // different refresh rates. Snap the final fraction to let the renderer sleep.
@@ -40,16 +45,19 @@ export function rotationAllowed(state,targetProgress=state.progress){return stat
 export function stateAt(p,reduced=false){
   p=clamp(p,0,openingEnd);
   const draftDissolve=smooth(p,.18,.24);
+  const pipeWire=reduced?(p>=1.425?1:0):smooth(p,1.425,1.49),pipeSolid=reduced?(p>=1.425?1:0):smooth(p,1.44,1.515);
   return {progress:p,draft:1-draftDissolve,draftDissolve,draw:linear(p,0,.17),
     wire:1-smooth(p,.80,.86),wireDraw:linear(p,.17,.35),volume:smooth(p,.24,.36),
     turn:smooth(p,.29,.38),explode:smooth(p,.38,.63)*(1-smooth(p,.84,.98)),
     material:linear(p,.65,.81),assembly:smooth(p,.84,.98),finalDetail:smooth(p,.98,1),
     intro:1-smooth(p,.04,.13),reduced,chapter:chapter(p),
     installationTurn:reduced?(p>=1.05?1:0):smooth(p,1.05,1.23),
-    flangeWire:reduced?(p>=1.24?1:0):linear(p,1.24,1.33),
-    flangeSolid:reduced?(p>=1.24?1:0):smooth(p,1.255,1.35),
-    pipeWire:reduced?(p>=1.24?1:0):smooth(p,1.32,1.57),
-    pipeSolid:reduced?(p>=1.24?1:0):smooth(p,1.35,1.61),
+    gasketDraw:reduced?(p>=1.24?1:0):linear(p,1.24,1.285),
+    gasketSolid:reduced?(p>=1.24?1:0):smooth(p,1.255,1.30),
+    gasketSeat:reduced?(p>=1.30?1:0):smooth(p,1.30,1.355),
+    flangeWire:reduced?(p>=1.36?1:0):linear(p,1.36,1.405),
+    flangeSolid:reduced?(p>=1.36?1:0):smooth(p,1.375,1.42),
+    pipeWire,pipeSolid,studDraw:pipeWire,studSolid:pipeSolid,nutDraw:pipeWire,nutSolid:pipeSolid,
     closeValve:reduced?(p>=1.05?1:0):smooth(p,1,1.14),
     cutaway:reduced?(p>=1.70?1:0):smooth(p,1.70,1.84),
     waterFill:p>=1.90?1:0,openValve:p>=openingStart?1:0};

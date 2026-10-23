@@ -3,7 +3,7 @@ import {RoomEnvironment} from './vendor/RoomEnvironment.js';
 import {readCAD} from './model.js';
 import {decodePreparedDisplay,createDrawingFrame} from './prepared-display.js';
 import {loadProfile} from './product-profile.js';
-import {clamp,smooth,stateAt,pathPosition,dragYaw,cameraTurns,stops,titles,chapter,follow,response,pointerParallax,visibleParallax,scrollAtTimeline,timelineAtScroll,installationEnd,cutawayEnd,waterEnd,openingEnd,rotationAllowed} from './motion.js';
+import {clamp,smooth,stateAt,pathPosition,dragYaw,cameraTurns,stops,titles,chapter,follow,response,pointerParallax,visibleParallax,scrollAtTimeline,timelineAtScroll,timelineSpan,installationEnd,cutawayEnd,waterEnd,openingEnd,rotationAllowed} from './motion.js';
 import {FillScrollGate,openingIntentAt} from './valve-operation.js';
 import {createSceneWarmup} from './scene-warmup.js';
 
@@ -67,7 +67,7 @@ async function initialize(){
     section.dataset.state='loading';retry.hidden=true;loadCopy.textContent='Подготавливаем модель';
     profile=await loadProfile(new URL(section.dataset.product,document.baseURI).href);
     sequenceEnd=profile.opening?openingEnd:profile.water?waterEnd:profile.cutaway?cutawayEnd:profile.installation?installationEnd:1;sequenceStops=[...stops,...(profile.installation?[installationEnd]:[]),...(profile.cutaway?[cutawayEnd]:[]),...(profile.water?[waterEnd]:[]),...(profile.opening?[openingEnd]:[])];
-    section.style.setProperty('--story-length',String(sequenceEnd+.16));section.style.setProperty('--reduced-length',String(sequenceEnd));
+    section.style.setProperty('--story-length',String(timelineSpan(sequenceEnd)));section.style.setProperty('--reduced-length',String(sequenceEnd));
     document.querySelector('button[data-installation]').hidden=!profile.installation;document.querySelector('button[data-cutaway]').hidden=!profile.cutaway;document.querySelector('button[data-water]').hidden=!profile.water;document.querySelector('button[data-opening]').hidden=!profile.opening;updateTarget();
     // Start the large model transfer without making the DWG wait for it.
     const modelBuffer=fetchBuffer(profile.assetURLs.model);modelBuffer.catch(()=>{});
@@ -198,6 +198,8 @@ function render(time){
     section.dataset.draftOpacity=state.draft.toFixed(4);section.dataset.draftDissolve=state.draftDissolve.toFixed(4);section.dataset.volume=state.volume.toFixed(4);section.dataset.autoTurn=state.turn.toFixed(4);
     section.dataset.weldReveal=state.finalDetail.toFixed(4);
     section.dataset.installationTurn=state.installationTurn.toFixed(4);section.dataset.pipeWire=state.pipeWire.toFixed(4);section.dataset.pipeSolid=state.pipeSolid.toFixed(4);section.dataset.flangeWire=state.flangeWire.toFixed(4);section.dataset.flangeSolid=state.flangeSolid.toFixed(4);section.dataset.contextParts=String(product.installation?.units.length||0);
+    for(const key of ['gasketDraw','gasketSolid','gasketSeat','studDraw','studSolid','nutDraw','nutSolid'])section.dataset[key]=state[key].toFixed(4);
+    section.dataset.mountingGaskets=String(product.installation?.fastening?.gaskets.length||0);section.dataset.mountingStuds=String(product.installation?.fastening?.studs.count||0);section.dataset.mountingNuts=String(product.installation?.fastening?.nuts.count||0);
     section.dataset.cutaway=state.cutaway.toFixed(4);section.dataset.cutX=product.cutaway?.uniforms.uSectionX.value.toFixed(4)||'';section.dataset.sectionFaces=String(product.cutaway?.entries.length||0);
     section.dataset.valveAngle=(state.closeValve*(1-(product.operation?.value||0))*90).toFixed(2);section.dataset.wheelAngle=((product.wheelPivot?.rotation.z||0)*180/Math.PI).toFixed(2);section.dataset.opening=(product.operation?.value||0).toFixed(5);section.dataset.operationMoving=String(operationMoving);
     section.dataset.waterFill=state.waterFill.toFixed(4);section.dataset.waterFront=product.water?.uniforms.uFront.value.toFixed(4)||'';section.dataset.waterVolume=(product.water?.fluid.ratio||0).toFixed(4);

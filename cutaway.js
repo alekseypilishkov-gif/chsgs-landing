@@ -61,11 +61,11 @@ export function sectionCapGeometry(meshes,{tolerance=.001,boreRadius=0}={}){
   geometry.userData.section={segments:segments.size,slabs:Math.max(0,xs.length-1),oddSlabs,area};return geometry;
 }
 
-function bindSection(material,uniforms,{cap=false,liner=false,interior=false,innerFinish=false,boreRadius=0,field='float sectionCoordinate(vec3 p){return p.x;}'}={}){
+export function bindSection(material,uniforms,{cap=false,liner=false,interior=false,innerFinish=false,boreRadius=0,field='float sectionCoordinate(vec3 p){return p.x;}'}={}){
   const previous=material.onBeforeCompile,cacheKey=material.customProgramCacheKey.bind(material);
   material.onBeforeCompile=(shader,renderer)=>{
     previous.call(material,shader,renderer);Object.assign(shader.uniforms,uniforms);
-    shader.vertexShader='varying vec3 vSectionPosition;varying float vSectionInner;\n'+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvSectionPosition=(modelMatrix*vec4(transformed,1.0)).xyz;vSectionInner=step(.2,-dot(normalize(normal),normalize(vec3(0.0,position.y,position.z)+vec3(0.0,.000001,0.0))));');
+    shader.vertexShader='varying vec3 vSectionPosition;varying float vSectionInner;\n'+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvec4 sectionVertex=vec4(transformed,1.0);\n#ifdef USE_INSTANCING\nsectionVertex=instanceMatrix*sectionVertex;\n#endif\nvSectionPosition=(modelMatrix*sectionVertex).xyz;vSectionInner=step(.2,-dot(normalize(normal),normalize(vec3(0.0,position.y,position.z)+vec3(0.0,.000001,0.0))));');
     let clip='float sectionPosition=sectionCoordinate(vSectionPosition);';
     clip+=cap?'if(uSectionEnabled<.5||sectionPosition>uSectionX)discard;':liner?'if(uSectionEnabled<.5||sectionPosition>uSectionX||vSectionPosition.z>.00001)discard;':'if(uSectionEnabled>.5&&sectionPosition<uSectionX&&vSectionPosition.z>.00001)discard;';
     if(interior)clip+='if(uSectionEnabled<.5||sectionPosition>uSectionX||vSectionInner<.5)discard;';
@@ -75,7 +75,7 @@ function bindSection(material,uniforms,{cap=false,liner=false,interior=false,inn
     if(boreRadius)clip+='if(uSectionEnabled>.5&&sectionPosition<uSectionX&&length(vSectionPosition.yz)<'+(boreRadius+.045).toFixed(6)+')discard;';
     shader.fragmentShader=field+'\nvarying vec3 vSectionPosition;varying float vSectionInner;uniform float uSectionEnabled;uniform float uSectionX;\n'+shader.fragmentShader.replace('#include <clipping_planes_fragment>','#include <clipping_planes_fragment>\n'+clip);
   };
-  material.customProgramCacheKey=()=>cacheKey()+':longitudinal-cut-v4:'+Number(cap)+Number(liner)+Number(interior)+Number(innerFinish)+':'+boreRadius+':'+field;material.needsUpdate=true;
+  material.customProgramCacheKey=()=>cacheKey()+':longitudinal-cut-v5:'+Number(cap)+Number(liner)+Number(interior)+Number(innerFinish)+':'+boreRadius+':'+field;material.needsUpdate=true;
 }
 
 // Join the section faces in assembled space. Small open export interfaces
