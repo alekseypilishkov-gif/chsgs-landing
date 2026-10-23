@@ -4,7 +4,7 @@ import {materials,extractionPaths,reflectionEnvironments,pipelineFinish} from '.
 import {createPipeline} from '../../pipeline.js';
 import {createCutaway} from '../../cutaway.js';
 import {createInletWater} from '../../water.js';
-import {QuarterTurn} from '../../valve-operation.js';
+import {QuarterTurn,handwheelAngle} from '../../valve-operation.js';
 const TAU=Math.PI*2;
 function coatedFlange(geometry){
   // Retain the actual machined raised sealing face, X=+/-485mm, as bare steel.
@@ -180,9 +180,12 @@ function* buildProduct(cad,installationSettings=null,cutawayEnabled=false,waterE
   if(openingEnabled&&!water)throw Error('Valve opening requires inlet water');
   const operation=openingEnabled?new QuarterTurn():null;
   function update(state,dt=1/60){
+    // Once reverse travel has hidden and cleared the passage, a fresh inlet
+    // cycle starts closed even if the previous six-second closing was cut short.
+    if(operation&&!state.openValve&&state.cutaway===0&&water.fluid.ratio===0)operation.reset();
     const moving=operation?.step(!!state.openValve&&water.fluid.ratio>=1-1e-7,dt,state.reduced)||false;
     ball.group.rotation.y=stem.group.rotation.y=(state.closeValve||0)*(1-(operation?.value||0))*Math.PI/2;
-    wheelPivot.rotation.z=-(operation?.wheelValue||0)*Math.PI/2;
+    wheelPivot.rotation.z=handwheelAngle(state.closeValve||0,operation?.wheelValue||0);
     state.valveOpening=operation?.value||0;state.flowRequested=openingEnabled&&!!state.openValve;
     return moving;
   }

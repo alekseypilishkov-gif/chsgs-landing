@@ -1,4 +1,4 @@
-import {clamp,smooth,waterEnd,openingStart} from './motion.js';
+import {clamp,waterEnd,openingStart} from './motion.js';
 
 // A reverse gesture closes immediately, even within the opening chapter.
 // Ignore sub-pixel scroll rounding when layout or viewport size changes.
@@ -8,22 +8,44 @@ export function openingIntentAt(intent,previous,next,ready){
   return next>previous;
 }
 
-// A timed actuation, independent of the distance or speed of the next scroll.
-// The driven shaft stops cleanly; only the handwheel receives a small recoil.
+export const handwheelTurns=100;
+export const handwheelTravel=handwheelTurns*Math.PI*2;
+export const actuationDuration=6;
+// Source position is open. Closing turns the wheel clockwise, opening turns
+// it counterclockwise, seen from the operator facing the handwheel.
+export const handwheelAngle=(closed,opened=0)=>handwheelTravel*closed*(opened-1);
+
+// Integrate a short smooth acceleration/deceleration and constant middle
+// speed. The ball moves throughout the drive instead of finishing early.
+function driveProgress(seconds,duration){
+  if(duration===0)return 1;
+  const t=clamp(seconds/duration),r=Math.min(.35/duration,.15);
+  const ramp=x=>x*x*x/(r*r)-.5*x*x*x*x/(r*r*r);
+  return t<r?ramp(t)/(1-r):t>1-r?1-ramp(1-t)/(1-r):(t-r/2)/(1-r);
+}
+
+// A full 90-degree shaft travel takes six seconds and 100 wheel turns.
+// Reverse from the actual position, with proportional remaining travel time.
+// The small final recoil is wheel-only and remains .72 degrees, irrespective
+// of the gearbox ratio. Elapsed wall time is not truncated at low frame rates.
 export class QuarterTurn{
-  constructor(duration=.9){if(!(duration>0&&Number.isFinite(duration)))throw Error('Invalid actuation duration');this.duration=duration;this.reset();}
-  reset(){this.value=this.wheelValue=this.from=this.wheelFrom=this.goal=0;this.elapsed=this.duration;}
+  constructor(duration=actuationDuration){if(!(duration>0&&Number.isFinite(duration)))throw Error('Invalid actuation duration');this.duration=duration;this.recoilTime=Math.min(.18,duration*.15);this.reset();}
+  reset(){this.value=this.wheelValue=this.from=this.wheelFrom=this.goal=0;this.travel=this.duration-this.recoilTime;this.total=this.elapsed=this.duration;}
   step(open,seconds=1/60,reduced=false){
     const goal=open?1:0;
-    if(reduced){this.value=this.wheelValue=this.from=this.wheelFrom=this.goal=goal;this.elapsed=this.duration;return false;}
-    if(goal!==this.goal){this.from=this.value;this.wheelFrom=this.wheelValue;this.goal=goal;this.elapsed=0;}
-    this.elapsed=Math.min(this.duration,this.elapsed+Math.max(0,Math.min(seconds,.05)));
-    if(this.duration-this.elapsed<1e-9)this.elapsed=this.duration;
-    const t=clamp(this.elapsed/this.duration),turn=smooth(t,0,.8),kick=.008*smooth(t,.6,.8)*(1-smooth(t,.8,1));
+    if(reduced){this.value=this.wheelValue=this.from=this.wheelFrom=this.goal=goal;this.total=this.elapsed=this.duration;return false;}
+    if(goal!==this.goal){
+      this.from=this.value;this.wheelFrom=this.wheelValue;this.goal=goal;this.elapsed=0;
+      this.travel=(this.duration-this.recoilTime)*Math.abs(goal-this.from);this.total=this.travel+this.recoilTime;
+    }
+    this.elapsed=Math.min(this.total,this.elapsed+(Number.isFinite(seconds)?Math.max(0,seconds):0));
+    if(this.total-this.elapsed<1e-9)this.elapsed=this.total;
+    const turn=driveProgress(this.elapsed,this.travel),settle=clamp((this.elapsed-this.travel)/this.recoilTime);
+    const kick=Math.sin(Math.PI*settle)**2*(.72*Math.PI/180)/handwheelTravel*Math.sign(this.goal-this.wheelFrom);
     this.value=this.from+(this.goal-this.from)*turn;
-    this.wheelValue=this.wheelFrom+(this.goal-this.wheelFrom)*turn+(this.goal-this.from)*kick;
-    if(t===1)this.value=this.wheelValue=this.goal;
-    return t<1;
+    this.wheelValue=this.wheelFrom+(this.goal-this.wheelFrom)*turn+kick;
+    if(this.elapsed===this.total)this.value=this.wheelValue=this.goal;
+    return this.elapsed<this.total;
   }
 }
 
