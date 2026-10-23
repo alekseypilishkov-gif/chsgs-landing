@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "id": "ld-dn400-pp-pn25",
+  "name": "Шаровой кран DN400",
+  "designation": "КШЦФР · ПП · PN25",
+  "brand": "ЧСГС",
+  "sectionLabel": "Создание шарового крана",
+  "canvasLabel": "Трёхмерная модель крана. Вращайте горизонтальным перетаскиванием или стрелками влево и вправо.",
+  "drawingAlt": "Боковая проекция шарового крана с редуктором",
+  "chapters": [
+    "Чертёж",
+    "Объём",
+    "Детали",
+    "Материалы",
+    "Кран в сборе",
+    "Трубопровод",
+    "Продольный разрез",
+    "Заполнение водой",
+    "Открытие крана"
+  ],
+  "cutaway": true,
+  "water": true,
+  "opening": true,
+  "installation": {"direction":[0,0.1,1.8],"frameMargin":1.14,"pipeLength":3.3,"elbow":{"radius":0.95,"straight":0.65}},
+  "adapter": "model.js",
+  "assets": {
+    "model": "valve.glb",
+    "drawing": "draft-paths.json",
+    "fallback": "draft.svg"
+  },
+  "camera": {
+    "fov": 34,
+    "near": 0.02,
+    "far": 100,
+    "automaticDirection": [
+      -0.45,
+      0.48,
+      1.8
+    ],
+    "margin": {
+      "desktop": 1.13,
+      "mobile": 1.14
+    },
+    "mobileExplodedRotation": -1.5707963267948966
+  },
+  "wireOpacity": 0.18,
+  "source": {
+    "stepSHA256": "7560c1c442b90714cc41e7ddc1d3dea2b14519a77e3e33f7ff4bd42b05791d69",
+    "dwgSHA256": "228807630a0d83e36dc331523587db32c5be73362a0a1db3c91b9b7036cebb7c"
+  }
+}
