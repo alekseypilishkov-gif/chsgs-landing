@@ -6,7 +6,7 @@ export function createFactoryDetail(root,frames,reduced,requestFrame){
   const cue=view.querySelector('.detail-scroll-cue'),visual=view.querySelector('.factory-visual'),status=visual.querySelector('[role="status"]');
   const layers=[...view.querySelectorAll('[data-parallax]')].map(node=>({node,speed:Number(node.dataset.parallax),shift:0,top:0,height:0}));
   const counters=[...view.querySelectorAll('[data-count]')].map(node=>({node,value:Number(node.dataset.count),started:null,top:0}));
-  const format=new Intl.NumberFormat('ru-RU');let requested=false,phase='closed',generation=0,pending=Promise.resolve(true),animation,cueEnd=0,wheelTarget=0,wheelActive=false,expectedScroll=null,lastScrollFrame=0;
+  const format=new Intl.NumberFormat('ru-RU');let requested=false,phase='closed',generation=0,pending=Promise.resolve(true),animation,cueEnd=0,wheelTarget=0,wheelPosition=0,wheelActive=false,expectedScroll=null,lastScrollFrame=0;
   const stopScroll=()=>{wheelActive=false;expectedScroll=null;};
   const state=value=>{phase=value;root.dataset.detail=value;};
   function measure(){
@@ -40,7 +40,7 @@ export function createFactoryDetail(root,frames,reduced,requestFrame){
   const onWheel=event=>{
     if(phase!=='open'||reduced.matches||event.ctrlKey||Math.abs(event.deltaX)>Math.abs(event.deltaY)){stopScroll();return;}
     event.preventDefault();const continuing=wheelActive,delta=event.deltaY*(event.deltaMode===1?16:event.deltaMode===2?view.clientHeight:1);
-    wheelTarget=clamp((wheelActive?wheelTarget:view.scrollTop)+delta,0,Math.max(0,view.scrollHeight-view.clientHeight));wheelActive=Math.abs(wheelTarget-view.scrollTop)>1;expectedScroll=null;if(!continuing)lastScrollFrame=performance.now();requestFrame();
+    wheelTarget=clamp((wheelActive?wheelTarget:view.scrollTop)+delta,0,Math.max(0,view.scrollHeight-view.clientHeight));wheelActive=Math.abs(wheelTarget-view.scrollTop)>1;expectedScroll=null;if(!continuing){wheelPosition=view.scrollTop;lastScrollFrame=performance.now();}requestFrame();
   };
   view.addEventListener('scroll',onScroll,{passive:true});view.addEventListener('wheel',onWheel,{passive:false});
   for(const type of ['pointerdown','touchstart','keydown'])view.addEventListener(type,stopScroll,{passive:true});
@@ -54,8 +54,8 @@ export function createFactoryDetail(root,frames,reduced,requestFrame){
     update(now){
       if(view.hidden)return {active:false,factoryActive:false,scroll:0,progress:0,rect:null};
       if(wheelActive){
-        const next=inertialScrollAt(view.scrollTop,wheelTarget,now-lastScrollFrame);view.scrollTop=next;expectedScroll=view.scrollTop;lastScrollFrame=now;
-        if(Math.abs(wheelTarget-view.scrollTop)<=1){view.scrollTop=wheelTarget;stopScroll();}
+        wheelPosition=inertialScrollAt(wheelPosition,wheelTarget,now-lastScrollFrame);view.scrollTop=wheelPosition;expectedScroll=view.scrollTop;lastScrollFrame=now;
+        if(Math.abs(wheelTarget-wheelPosition)<=1){view.scrollTop=wheelTarget;stopScroll();}
       }
       const scroll=view.scrollTop,height=innerHeight;
       for(const layer of layers){layer.shift=reduced.matches?0:detailParallaxAt(height*.6-(layer.top-scroll+layer.height/2),layer.speed,innerWidth);layer.node.style.translate='0 '+layer.shift.toFixed(2)+'px';}
