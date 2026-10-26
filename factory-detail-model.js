@@ -40,9 +40,6 @@ export async function createFactoryDetailModel(scene){
       #include <colorspace_fragment>
     }`});
   const rig=new THREE.Group(),wire=new THREE.LineSegments(geometry,material);wire.renderOrder=1;
-  const fringes=[new THREE.Color(1,0,0),new THREE.Color(0,1,1)].map(tint=>{
-    const m=material.clone();m.blending=THREE.AdditiveBlending;m.uniforms={...uniforms,uTint:{value:tint},uShift:{value:new THREE.Vector2()},uOpacity:{value:.5}};return new THREE.LineSegments(geometry,m);
-  });
   const particlePositions=[],particleSeeds=[];
   for(let vertex=0;vertex<count;vertex+=2)if(leads[vertex]){particlePositions.push(...centres.subarray(vertex*3,vertex*3+3));particleSeeds.push(seeds[vertex]);}
   const particleGeometry=new THREE.BufferGeometry();particleGeometry.setAttribute('position',new THREE.Float32BufferAttribute(particlePositions,3));particleGeometry.setAttribute('seed',new THREE.Float32BufferAttribute(particleSeeds,1));particleGeometry.boundingSphere=new THREE.Sphere(new THREE.Vector3(),8);
@@ -59,24 +56,21 @@ export async function createFactoryDetailModel(scene){
       #include <colorspace_fragment>
     }`});
   const particle=new THREE.Points(particleGeometry,particleMaterial);particle.renderOrder=2;
-  const particleFringes=[new THREE.Color(1,0,0),new THREE.Color(0,1,1)].map(tint=>{const m=particleMaterial.clone();m.blending=THREE.AdditiveBlending;m.uniforms={...particleMaterial.uniforms,uTint:{value:tint},uShift:{value:new THREE.Vector2()},uOpacity:{value:.25},uFringe:{value:1}};return new THREE.Points(particleGeometry,m);});
-  rig.add(...fringes,wire,...particleFringes,particle);rig.visible=false;scene.add(rig);let started=null;
+  rig.add(wire,particle);rig.visible=false;scene.add(rig);let started=null;
   return {
     reset(){started=null;rig.visible=false;},
-    update(seconds,{rect,width,height,camera,active,reduced=false,pan=[0,0]}){
+    update(seconds,{rect,width,height,camera,active,reduced=false}){
       if(!active||!rect||rect.top>height||rect.bottom<0){rig.visible=false;return {reveal:started===null?0:1};}
       if(started===null&&(rect.top+rect.height*.5)<height*.9)started=seconds;
       const reveal=reduced?1:started===null?0:Math.min(1,(seconds-started)/1.1);
-      rig.visible=reveal>0;particle.visible=reveal<1;particleFringes.forEach(mesh=>mesh.visible=reveal<1);particleMaterial.uniforms.uPixelRatio.value=Math.min(globalThis.devicePixelRatio||1,1.75);
+      rig.visible=reveal>0;particle.visible=reveal<1;particleMaterial.uniforms.uPixelRatio.value=Math.min(globalThis.devicePixelRatio||1,1.75);
       const span=2*camera.position.length()*Math.tan(camera.fov*Math.PI/360),worldWidth=span*width/height;
       rig.scale.setScalar(rect.width/width*worldWidth/5.8);
-      rig.position.set(((rect.left+rect.width/2)/width-.5+pan[0]*.4)*worldWidth,(.5-(rect.top+rect.height/2)/height+pan[1]*.4)*span,0);
-      rig.rotation.set(.48+pan[1]*3,-.5+(reduced?0:seconds*.055)+pan[0]*3,0);
+      rig.position.set(((rect.left+rect.width/2)/width-.5)*worldWidth,(.5-(rect.top+rect.height/2)/height)*span,0);
+      rig.rotation.set(.48,-.5+(reduced?0:seconds*.055),0);
       uniforms.uReveal.value=reveal;
-      fringes.forEach((mesh,i)=>{const sign=i?1:-1;mesh.material.uniforms.uShift.value.set(sign*1.1*2/width,sign*.25*2/height);});
-      particleFringes.forEach((mesh,i)=>{const sign=i?1:-1;mesh.material.uniforms.uShift.value.set(sign*.7*2/width,sign*.15*2/height);});
       return {reveal};
     },
-    dispose(){geometry.dispose();material.dispose();fringes.forEach(n=>n.material.dispose());particleGeometry.dispose();particleMaterial.dispose();particleFringes.forEach(n=>n.material.dispose());scene.remove(rig);},
+    dispose(){geometry.dispose();material.dispose();particleGeometry.dispose();particleMaterial.dispose();scene.remove(rig);},
   };
 }

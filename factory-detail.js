@@ -9,12 +9,14 @@ export function createFactoryDetail(root,frames,reduced,requestFrame){
   const counters=[...view.querySelectorAll('[data-count]')].map(node=>({node,value:Number(node.dataset.count),started:null,top:0}));
   const format=new Intl.NumberFormat('ru-RU');let requested=false,covered=false,phase='closed',generation=0,pending=Promise.resolve(true),animation,cueEnd=0,wheelTarget=0,wheelPosition=0,wheelActive=false,expectedScroll=null,lastScrollFrame=0;
   const stopScroll=()=>{wheelActive=false;expectedScroll=null;};
+  let previousScroll=-1,visualBounds=null,scrollRange=1;
   const state=value=>{phase=value;root.dataset.detail=value;};
   function measure(){
     if(view.hidden)return;stopScroll();
     cueEnd=cue.offsetTop+cue.offsetHeight+4;
     layers.forEach(layer=>{const rect=layer.node.getBoundingClientRect();layer.top=rect.top+view.scrollTop-(layer.target===layer.node?layer.shift:0)-(layer.parent?.shift||0);layer.height=rect.height;});
     counters.forEach(item=>{item.top=item.node.getBoundingClientRect().top+view.scrollTop;});requestFrame();
+    const rect=visual.getBoundingClientRect();visualBounds={left:rect.left,width:rect.width,height:rect.height,top:rect.top+view.scrollTop};scrollRange=Math.max(1,view.scrollHeight-view.clientHeight);previousScroll=-1;
   }
   async function fade(open,token){
     const from=getComputedStyle(view).opacity;animation?.cancel();
@@ -60,19 +62,22 @@ export function createFactoryDetail(root,frames,reduced,requestFrame){
         if(Math.abs(wheelTarget-wheelPosition)<=1){view.scrollTop=wheelTarget;stopScroll();}
       }
       const scroll=view.scrollTop,height=innerHeight;
-      const progress=scroll/Math.max(1,view.scrollHeight-view.clientHeight);
-      close.style.setProperty('--reading-progress',progress.toFixed(5));
-      for(const layer of layers){
+      const progress=scroll/scrollRange;
+      if(scroll!==previousScroll){
+        close.style.setProperty('--reading-progress',progress.toFixed(5));
+        for(const layer of layers){
         layer.shift=reduced.matches?0:detailParallaxAt(height*.6-(layer.top-scroll+(layer.parent?.shift||0)+layer.height/2),layer.speed,innerWidth);
         if(layer.target!==layer.node){const limit=Math.max(0,layer.height*.12-1);layer.shift=clamp(layer.shift,-limit,limit);}
         layer.target.style.translate='0 '+layer.shift.toFixed(2)+'px';
+        }
+        cue.classList.toggle('is-offscreen',scroll>=cueEnd);previousScroll=scroll;
       }
       if(phase==='open'||phase==='revealing')for(const item of counters){
         if(item.started===null&&item.top-scroll<height*.88)item.started=now;
         if(item.started!==null){const value=reduced.matches?item.value:counterAt((now-item.started)/1400,item.value),text=format.format(value);if(item.node.textContent!==text)item.node.textContent=text;}
       }
-      cue.classList.toggle('is-offscreen',scroll>=cueEnd);
-      const rect=visual.getBoundingClientRect();
+      const top=visualBounds?visualBounds.top-scroll:0;
+      const rect=visualBounds?{...visualBounds,top,bottom:top+visualBounds.height}:null;
       return {active:true,factoryActive:phase==='open'&&scroll>30,scroll,progress,rect};
     },
     dispose(){animation?.cancel();stopScroll();observer.disconnect();view.removeEventListener('scroll',onScroll);view.removeEventListener('wheel',onWheel);for(const type of ['pointerdown','touchstart','keydown'])view.removeEventListener(type,stopScroll);},

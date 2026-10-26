@@ -2,6 +2,7 @@ import {clamp,panAt} from './terrain-motion.js';
 import {createMenuTransition} from './menu-transition.js';
 import {createHeroCopy} from './hero-copy.js';
 import {createFactoryDetail} from './factory-detail.js';
+import {createRenderQuality,renderPixelRatio,renderInterval} from './render-quality.js';
 
 
 const root=document.documentElement,chapters=[...document.querySelectorAll('.chapter')];
@@ -11,6 +12,9 @@ const reduced=matchMedia('(prefers-reduced-motion: reduce)'),finePointer=matchMe
 let current=-1,progress=0,frame=0,last=0,clock=0,selected=0;
 let renderer,scene,camera,presentation,THREE,factoryModel,factoryLoading;
 let menuOpen=false,menuIntent=0,menuBlend=0,detailBlend=0;
+let nextRender=0,paintedProgress=NaN,gridPosition='';
+const quality=createRenderQuality(matchMedia('(pointer: coarse)').matches||(navigator.hardwareConcurrency||8)<=4||(navigator.deviceMemory||8)<=4);
+root.dataset.quality=quality.low?'low':'full';
 const pointer=[0,0],pan=[0,0],blueprint=document.querySelector('.blueprint-grid');
 const menuChannels=[...document.querySelectorAll('#menu-chromatic feOffset')];
 
@@ -25,12 +29,14 @@ const focusGuides=target=>menuMotion.focus(target);
 const menuFills=new Map();
 function fillMenuLink(link,active){
   const title=link.querySelector('.menu-title'),to=active?'#ffec00':'#fff',previous=menuFills.get(link);
-  if(previous?.color===to)return;
+  if(previous?.color===to||(!previous&&!active))return;
   previous?.animation?.cancel();const from=previous?.color||'#fff';
-  title.style.backgroundImage='linear-gradient(90deg,'+to+' 50%,'+from+' 50%)';title.style.backgroundPosition='100% 0';
-  const animation=title.animate([{backgroundPosition:'100% 0'},{backgroundPosition:'0% 0'}],{duration:reduced.matches?0:400,easing:'cubic-bezier(.4,0,.2,1)',fill:'forwards'});
+  let fill=title.querySelector('.menu-title-fill');
+  if(!fill){fill=document.createElement('span');fill.className='menu-title-fill';fill.textContent=title.textContent;fill.setAttribute('aria-hidden','true');title.append(fill);}
+  title.style.color=from;fill.style.color=to;fill.hidden=false;
+  const animation=fill.animate([{clipPath:'inset(0 100% 0 0)'},{clipPath:'inset(0 0% 0 0)'}],{duration:reduced.matches?0:400,easing:'cubic-bezier(.4,0,.2,1)',fill:'forwards'});
   const state={color:to,animation};menuFills.set(link,state);
-  animation.finished.then(()=>{if(menuFills.get(link)!==state)return;title.style.backgroundImage='linear-gradient('+to+','+to+')';title.style.backgroundPosition='0% 0';animation.cancel();state.animation=null;},()=>{});
+  animation.finished.then(()=>{if(menuFills.get(link)!==state)return;title.style.color=to;fill.hidden=true;animation.cancel();state.animation=null;},()=>{});
 }
 for(const link of links){
   link.addEventListener('pointerenter',event=>{if(event.pointerType!=='touch'&&!menuMotion.busy)fillMenuLink(link,true);});
@@ -108,7 +114,9 @@ function updateUI(){
 }
 function requestFrame(){if(!frame&&!document.hidden)frame=requestAnimationFrame(render);}
 function render(now){
-  frame=0;const dt=Math.min(50,now-(last||now));last=now;
+  frame=0;const elapsed=now-(last||now);
+  if(!reduced.matches&&last&&now+.1<nextRender){requestFrame();return;}
+  const dt=Math.min(50,elapsed);last=now;nextRender=now+renderInterval-(nextRender?Math.max(0,now-nextRender)%renderInterval:0);
   const target=targetProgress();
   progress=reduced.matches?target:progress+(target-progress)*(1-Math.exp(-dt*.012));
   if(Math.abs(target-progress)<.00001)progress=target;
@@ -120,14 +128,18 @@ function render(now){
   if(Math.abs(menuTarget-menuBlend)<.0001)menuBlend=menuTarget;
   root.classList.toggle('has-menu-aberration',menuBlend>0);
   menuChannels.forEach((channel,index)=>{const amount=menuBlend*(index===0?1:-1),x=(amount*2.5).toFixed(3);if(channel.getAttribute('dx')===x)return;channel.setAttribute('dx',x);channel.setAttribute('dy',(amount*.5).toFixed(3));});
-  blueprint.style.translate=(-pan[0]*1600).toFixed(3)+'px '+(pan[1]*1800-(reduced.matches?0:Math.min(detailState.scroll*.035,40))).toFixed(3)+'px';
-  updateUI();
+  const gridTranslate=(-pan[0]*1600).toFixed(3)+'px '+(pan[1]*1800-(reduced.matches?0:Math.min(detailState.scroll*.035,40))).toFixed(3)+'px';
+  if(gridPosition!==gridTranslate){blueprint.style.translate=gridTranslate;gridPosition=gridTranslate;}
+  if(progress!==paintedProgress){updateUI();paintedProgress=progress;}
   document.querySelector('#journey-progress').style.transform='scaleX('+detailState.progress+')';
   if(renderer&&presentation){
-    clock+=dt/1000;
+    clock+=elapsed/1000;
+    if(clock>7&&!menuMotion.busy&&quality.sample(elapsed)){
+      root.dataset.quality='low';resizeScene();presentation.reduceQuality().then(()=>{root.dataset.wireSegments=String(presentation.segments);requestFrame();});
+    }
     const detailTarget=detail.active?1:0;detailBlend=reduced.matches?detailTarget:detailBlend+(detailTarget-detailBlend)*(1-Math.exp(-dt*.006));
     const state=presentation.update(clock,{progress,pan,reduced:reduced.matches,menu:menuBlend,detail:detailBlend,detailScroll:detailState.scroll,height:innerHeight});
-    if(factoryModel){const factoryState=factoryModel.update(clock,{...detailState,active:detailState.factoryActive,width:innerWidth,height:innerHeight,camera,pan,reduced:reduced.matches});root.dataset.factoryReveal=factoryState.reveal.toFixed(3);}
+    if(factoryModel){const factoryState=factoryModel.update(clock,{...detailState,active:detailState.factoryActive,width:innerWidth,height:innerHeight,camera,reduced:reduced.matches});root.dataset.factoryReveal=factoryState.reveal.toFixed(3);}
     root.classList.toggle('hero-copy-visible',state.copy);heroCopy.update(state);root.dataset.intro=state.stage;root.dataset.copy=state.copyStage;
     root.dataset.product=presentation.manifest.models[state.from].id;root.dataset.rotation=state.angle.toFixed(3);root.dataset.morph=state.morph.toFixed(4);
     renderer.render(scene,camera);root.dataset.pan=pan.map(v=>v.toFixed(5)).join(',');
@@ -142,12 +154,12 @@ document.addEventListener('pointerleave',centrePointer);addEventListener('blur',
 function resizeScene(){
   if(!renderer)return;
   presentation?.resize(camera,innerWidth,innerHeight);
-  renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));renderer.setSize(innerWidth,innerHeight,false);
+  renderer.setPixelRatio(renderPixelRatio(devicePixelRatio,quality.low));renderer.setSize(innerWidth,innerHeight,false);
 }
 addEventListener('resize',()=>{menuMotion.finish();detail.measure();resizeScene();requestFrame();});
-reduced.addEventListener('change',()=>{menuMotion.finish();pointer.fill(0);pan.fill(0);requestFrame();});
+reduced.addEventListener('change',()=>{menuMotion.finish();detail.measure();pointer.fill(0);pan.fill(0);requestFrame();});
 finePointer.addEventListener('change',()=>focusGuides(null));
-document.addEventListener('visibilitychange',()=>{last=0;if(document.hidden){menuMotion.finish();cancelAnimationFrame(frame);frame=0;}else requestFrame();});
+document.addEventListener('visibilitychange',()=>{last=nextRender=0;if(document.hidden){menuMotion.finish();cancelAnimationFrame(frame);frame=0;}else requestFrame();});
 addEventListener('pageshow',()=>{last=0;requestFrame();});
 function showFailure(){
   detail.setModelStatus(false);
@@ -158,11 +170,11 @@ async function init(){
   try{
     const modules=await Promise.all([import('three'),import('./product-hero.js')]);THREE=modules[0];
     renderer=new THREE.WebGLRenderer({canvas:document.querySelector('#product-scene'),alpha:true,antialias:true,powerPreference:'high-performance'});
-    renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));renderer.setSize(innerWidth,innerHeight,false);renderer.setClearColor(0x292929,0);
+    renderer.setPixelRatio(renderPixelRatio(devicePixelRatio,quality.low));renderer.setSize(innerWidth,innerHeight,false);renderer.setClearColor(0x292929,0);
     scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(35,innerWidth/innerHeight,.1,60);
-    presentation=await modules[1].createProductHero(scene);resizeScene();
+    presentation=await modules[1].createProductHero(scene,{lowPower:quality.low});root.dataset.wireSegments=String(presentation.segments);resizeScene();
     renderer.domElement.addEventListener('webglcontextlost',event=>{event.preventDefault();cancelAnimationFrame(frame);frame=0;renderer=null;showFailure();});
-    clock=0;root.dataset.scene='ready';status.hidden=true;requestFrame();
+    clock=0;last=nextRender=0;root.dataset.scene='ready';status.hidden=true;requestFrame();
   }catch(error){console.error('Product hero initialization failed',error);renderer?.dispose();renderer=null;showFailure();}
 }
 progress=targetProgress();updateUI();requestFrame();init();

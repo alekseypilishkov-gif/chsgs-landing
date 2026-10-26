@@ -1,15 +1,15 @@
 {
   "version": 1,
   "segments": 112375,
-  "generatorSHA256": "8b0455b089055ec74a53594e79bee6577683c7eb942ff0bb5acb1d33fa7a8ee8",
-  "cadGeneratorSHA256": "2479dcb5b4adb3ac965f0274cf1fee9c00a8320ad2f0e433289e26442bdb2d5e",
+  "generatorSHA256": "bea16767ab6dc22cd5ea848bba1e529fdd7c999281872c2378ecfcaaceb9cae0",
+  "cadGeneratorSHA256": "0e981cc369654394887706eff0554c9a352973d2b65705989e412628bcf6a578",
   "models": [
     {
       "id": "valve",
-      "name": "Шаровой кран DN400",
       "file": "valve.bin.gz",
       "sha256": "98ee6b2741984aaf17afb6cad8d4b6d176db83327af05c64a060184357dafad0",
       "bytes": 873571,
+      "name": "Шаровой кран DN400",
       "sourceSHA256": "7560c1c442b90714cc41e7ddc1d3dea2b14519a77e3e33f7ff4bd42b05791d69",
       "originalSegments": 87978,
       "bounds": {
@@ -33,10 +33,10 @@
     },
     {
       "id": "butterfly",
-      "name": "Дисковый затвор DN900",
       "file": "butterfly.bin.gz",
       "sha256": "d62024aabb1142660ee07dc75151bb27e3ffaa659c735c29795194c52d542572",
       "bytes": 837083,
+      "name": "Дисковый затвор DN900",
       "sourceSHA256": "20789c3d41d5de282b216468d83f141809dbffe280ae567a588c350e19258dd5",
       "originalSegments": 99221,
       "bounds": {
@@ -60,10 +60,10 @@
     },
     {
       "id": "strainer",
-      "name": "Грязевик DN300",
       "file": "strainer.bin.gz",
       "sha256": "d20027925cf0cf48bd90dc9341c4df6f38c7e28e15e005df3e02d7d76dbf2c6e",
       "bytes": 975196,
+      "name": "Грязевик DN300",
       "sourceSHA256": "8710289b2ebcd7c90e90a88a4d8e8524cfe787a951f60f82c4ad64f08fd2fa7b",
       "originalSegments": 112375,
       "bounds": {
@@ -84,6 +84,95 @@
         ],
         "scale": 0.004061538461538462
       }
+    },
+    {
+      "id": "strizh",
+      "file": "strizh.bin.gz",
+      "sha256": "3dd29e7cad030de35da484f381489ab133680972c25a20b9d424ac7f5fc99e7b",
+      "bytes": 889593,
+      "name": "LD Стриж DN100.НП PN16 под электропривод",
+      "sourceSHA256": "b6432d04c41e45c355cfec9a03f23febb74b7a6ccb9e315e1ead4f1393137060",
+      "originalSegments": 68700,
+      "bounds": {
+        "min": [
+          -107.5,
+          -107.5,
+          -55.5
+        ],
+        "max": [
+          107.5,
+          165.1999969482422,
+          55.5
+        ],
+        "centre": [
+          0,
+          28.849998474121094,
+          0
+        ],
+        "scale": 0.014081408298397682
+      }
+    },
+    {
+      "id": "large-valve",
+      "file": "large-valve.bin.gz",
+      "sha256": "ee324f3f08b4b35e598e0c28ad07522d9227566c1806353300402cb4bb7e187d",
+      "bytes": 706106,
+      "name": "КШЦПР DN600.ПП PN16 с редуктором",
+      "sourceSHA256": "a8ac0835fb48d5488f14326940da550aa881600c3a203d6c40eb9b5c6070e0d4",
+      "originalSegments": 43889,
+      "bounds": {
+        "min": [
+          -890.7772216796875,
+          -747.790771484375,
+          -485
+        ],
+        "max": [
+          710.6070556640625,
+          968.5848999023438,
+          485
+        ],
+        "centre": [
+          -90.0850830078125,
+          110.39706420898438,
+          0
+        ],
+        "scale": 0.002796590559991983
+      }
     }
-  ]
+  ],
+  "low": {
+    "segments": 50000,
+    "models": [
+      {
+        "id": "valve",
+        "file": "valve.low.bin.gz",
+        "sha256": "0d9c11fd823424224a6c1740701025497e8c8c970ea072fc0905d9a233e2a382",
+        "bytes": 557353
+      },
+      {
+        "id": "butterfly",
+        "file": "butterfly.low.bin.gz",
+        "sha256": "2c174eb69d01f280873f8d8157299ef4b6ccc0456a2ac8f1561bff9f94656cdb",
+        "bytes": 579262
+      },
+      {
+        "id": "strainer",
+        "file": "strainer.low.bin.gz",
+        "sha256": "e500501ec5b3d06febeb466c6a56a68fc39a1cfa2d3a1b34cb3f4a3bb5d1e6d0",
+        "bytes": 685733
+      },
+      {
+        "id": "strizh",
+        "file": "strizh.low.bin.gz",
+        "sha256": "2df46add2f0a18b2a9629beea011af92d98748482a07a987f32f5ac253b6132d",
+        "bytes": 480535
+      },
+      {
+        "id": "large-valve",
+        "file": "large-valve.low.bin.gz",
+        "sha256": "c913e5d6ed5cffd2addef4a4bed8b564f73b5f53b2040971c8115eb43c756b6e",
+        "bytes": 393164
+      }
+    ]
+  }
 }
