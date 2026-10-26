@@ -4,6 +4,44 @@
   "accessed": "2026-10-26",
   "assets": [
     {
+      "file": "about_full_cycle.png",
+      "source": "source/images/about_full_cycle.png",
+      "sha256": "32ea08e26a0801ae2ab924dc5d10eb0d004eefe5d1dbb537d78a9509845c4004",
+      "bytes": 2144315,
+      "width": 1535,
+      "height": 1025,
+      "origin": "User-supplied image, copied unchanged."
+    },
+    {
+      "file": "about_chpu.png",
+      "source": "source/images/about_chpu.png",
+      "sha256": "3a717011da7a8be55910913db2db48a2ed5845b9f1c21ffe871bae52e43155b0",
+      "bytes": 1826866,
+      "width": 1536,
+      "height": 1024,
+      "origin": "User-supplied image, copied unchanged."
+    },
+    {
+      "file": "about_polish.png",
+      "source": "source/images/about_polish.png",
+      "sha256": "334de2ca440dbaa6fa1986bad963fb35331c314d26adb74452f263b3e50ac123",
+      "bytes": 2583315,
+      "width": 1672,
+      "height": 941,
+      "origin": "User-supplied image, copied unchanged."
+    },
+    {
+      "file": "about_paint.png",
+      "source": "source/images/about_paint.png",
+      "sha256": "4c4be544687d8e7cd0654aad7876a8e2b8fc1cbf161fef8e0117c816c522e04f",
+      "bytes": 1999537,
+      "width": 1536,
+      "height": 1024,
+      "origin": "User-supplied image, copied unchanged."
+    }
+  ],
+  "previousAssets": [
+    {
       "file": "production-line.png",
       "url": "https://xn--d1an.xn--p1ai/upload/info_page/additional/1bc/1bc760cf88a2558e0917bddf43e8f76f_ld_6a6043e917b5e2.87650181.png",
       "sha256": "bf34a3616d097bb579e5bae2250a31f7f51fa30c96fccaef6c7c66755efd6101",

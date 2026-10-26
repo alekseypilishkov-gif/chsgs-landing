@@ -2,6 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
+  <meta name="robots" content="noindex, nofollow, noimageindex">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#262626">
   <meta name="description" content="ЧелябинскСпецГражданСтрой: завод, продукция, сервис и глобальное присутствие. Интерактивное путешествие.">
@@ -13,11 +14,13 @@
   <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
 </head>
 <body>
+  <svg class="effect-definitions" width="0" height="0" aria-hidden="true" focusable="false"><defs><filter id="menu-chromatic" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB"><feColorMatrix in="SourceGraphic" type="matrix" values="1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0"/><feOffset dx="0" dy="0" result="red"/><feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 1 0"/><feOffset dx="0" dy="0"/><feBlend in2="red" mode="screen"/></filter></defs></svg>
   <a class="skip" href="#factory">К разделам</a>
   <div class="blueprint-grid" aria-hidden="true"></div>
   <div class="blueprint-vignette" aria-hidden="true"></div>
   <div class="landscape" aria-hidden="true"><canvas id="product-scene"></canvas></div>
   <div class="menu-shade" aria-hidden="true"></div>
+  <div class="detail-shade" aria-hidden="true"></div>
   <div class="screen-guides" aria-hidden="true">
     <span class="screen-guide screen-guide--top"></span><span class="screen-guide screen-guide--bottom"></span>
     <span class="screen-guide screen-guide--left"></span><span class="screen-guide screen-guide--right"></span>
@@ -32,7 +35,14 @@
       <a href="#products" aria-label="Продукция"><span class="menu-title">Продукция</span><span class="menu-index" aria-hidden="true">02</span></a>
       <a href="#service" aria-label="Сервис"><span class="menu-title">Сервис</span><span class="menu-index" aria-hidden="true">03</span></a>
       <a href="#presence" aria-label="Достижения"><span class="menu-title">Достижения</span><span class="menu-index" aria-hidden="true">04</span></a>
+      <a href="#partners" aria-label="Партнеры"><span class="menu-title">Партнеры</span><span class="menu-index" aria-hidden="true">05</span></a>
     </div>
+    <address class="menu-contacts">
+      <a href="tel:+73517304747">+7 351 730-47-47</a>
+      <span>Пн-Пт 8:30-17:30</span>
+      <span>Россия, Челябинская область, Челябинск, Енисейская, 47</span>
+      <a href="mailto:office@chsgs.ru">office@chsgs.ru</a>
+    </address>
   </nav>
   <main id="journey">
     <section class="chapter" id="factory" aria-labelledby="factory-title"><div class="chapter__content">
@@ -53,9 +63,12 @@
       <h1 id="presence-title">Глобальное присутствие<br>и достижения</h1>
       <p>Карта дилеров<span class="separator">/</span>Список партнёров</p>
     </div></section>
+    <section class="chapter" id="partners" aria-labelledby="partners-title"><div class="chapter__content">
+      <h1 id="partners-title">Партнеры</h1>
+    </div></section>
   </main>
   <section class="factory-detail" id="factory-detail" aria-labelledby="factory-detail-title" hidden>
-    <button class="detail-close" type="button" aria-label="Закрыть информацию о заводе"><svg class="close-border" viewBox="0 0 64 64" aria-hidden="true"><rect x=".5" y=".5" width="63" height="63" pathLength="1"/></svg><svg class="close-cross" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 5 14 14M19 5 5 19"/></svg></button>
+    <button class="detail-close" type="button" aria-label="Закрыть информацию о заводе"><svg class="close-progress" viewBox="0 0 64 64" aria-hidden="true"><rect x=".5" y=".5" width="63" height="63" pathLength="1"/></svg><svg class="close-border" viewBox="0 0 64 64" aria-hidden="true"><rect x=".5" y=".5" width="63" height="63" pathLength="1"/></svg><svg class="close-cross" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 5 14 14M19 5 5 19"/></svg></button>
     <div class="detail-scroll-cue" aria-hidden="true"><span>Скролльте вниз</span></div>
     <div class="detail-content">
       <section class="detail-intro">
@@ -76,16 +89,22 @@
       <section class="factory-technology" aria-labelledby="factory-technology-title">
         <h3 id="factory-technology-title">Технологический парк<br>и глубина производства</h3>
         <p class="technology-lead">От стального проката до готовой арматуры: собственное производство объединяет обработку металла, роботизированную сварку, автоматическую сборку и защиту поверхностей.</p>
-        <div class="technology-row">
-          <div class="technology-copy"><h4>Полный цикл. Собственная автоматизация.</h4><p>Проектирование, комплектующие, сборка и испытания сосредоточены на заводе. Здесь создана первая в России автоматическая линия сборки газовой арматуры собственной разработки. Она контролирует затяжку и сжатие уплотнений для повторяемого качества.</p></div>
-          <figure class="detail-photo" data-parallax=".2"><img src="assets/factory-detail/production-line.png" width="800" height="533" loading="lazy" alt="Парк станков с ЧПУ на заводе ЧСГС"><figcaption>Механическая обработка</figcaption></figure>
+        <div class="technology-row" data-parallax=".08">
+          <div class="technology-copy" data-parallax="-.12"><h4>Полный цикл. Собственная автоматизация.</h4><p>Проектирование, комплектующие, сборка и испытания сосредоточены на заводе. Здесь создана первая в России автоматическая линия сборки газовой арматуры собственной разработки. Она контролирует затяжку и сжатие уплотнений для повторяемого качества.</p></div>
+          <figure class="detail-photo" data-parallax=".2"><img src="assets/factory-detail/about_full_cycle.png" width="1535" height="1025" loading="lazy" decoding="async" alt="Роботизированная линия производства арматуры"></figure>
         </div>
-        <div class="technology-row technology-row--reverse">
-          <div class="technology-copy"><h4>Точность обработки. Прочность соединений.</h4><p>Более 120 многофункциональных станков с ЧПУ обрабатывают детали из Ст20, 09Г2С, 12Х18Н10Т и AISI 316. Сварочные роботы следят за дугой и геометрией шва, обеспечивая прочность корпусов при гидравлических и механических нагрузках.</p></div>
-          <figure class="detail-photo" data-parallax=".16"><img src="assets/factory-detail/technology-park.png" width="800" height="533" loading="lazy" alt="Автоматизированный раскрой стального проката в цехе ЧСГС"><figcaption>Подготовка стальных деталей</figcaption></figure>
+        <div class="technology-row technology-row--reverse" data-parallax=".08">
+          <div class="technology-copy" data-parallax="-.12"><h4>Точность обработки. Прочность соединений.</h4><p>Более 120 многофункциональных станков с ЧПУ обрабатывают детали из Ст20, 09Г2С, 12Х18Н10Т и AISI 316. Сварочные роботы следят за дугой и геометрией шва, обеспечивая прочность корпусов при гидравлических и механических нагрузках.</p></div>
+          <figure class="detail-photo" data-parallax=".2"><img src="assets/factory-detail/about_chpu.png" width="1536" height="1024" loading="lazy" decoding="async" alt="Станки с числовым программным управлением"></figure>
         </div>
-        <div class="technology-finish"><div><h4>Прецизионная доводка</h4><p>Шлифование и полирование контактных поверхностей улучшают геометрию и снижают шероховатость. Меньшее трение продлевает ресурс уплотнений и уменьшает момент управления.</p></div><div><h4>Защита металла</h4><p>Гальванические покрытия и термодиффузионное цинкование защищают пружины и крепёж от атмосферной и химической коррозии.</p></div></div>
-        <p class="detail-source">Материалы и фотографии — <a href="https://xn--d1an.xn--p1ai/info_ld_plants/chsgs/" target="_blank" rel="noreferrer">Заводы «ЛД»</a></p>
+        <div class="technology-row" data-parallax=".08">
+          <div class="technology-copy" data-parallax="-.12"><h4>Прецизионная доводка</h4><p>Шлифование и полирование контактных поверхностей улучшают геометрию и снижают шероховатость. Меньшее трение продлевает ресурс уплотнений и уменьшает момент управления.</p></div>
+          <figure class="detail-photo" data-parallax=".2"><img src="assets/factory-detail/about_polish.png" width="1672" height="941" loading="lazy" decoding="async" alt="Полированная сферическая деталь на участке доводки"></figure>
+        </div>
+        <div class="technology-row technology-row--reverse" data-parallax=".08">
+          <div class="technology-copy" data-parallax="-.12"><h4>Защита металла</h4><p>Гальванические покрытия и термодиффузионное цинкование защищают пружины и крепёж от атмосферной и химической коррозии.</p></div>
+          <figure class="detail-photo" data-parallax=".2"><img src="assets/factory-detail/about_paint.png" width="1536" height="1024" loading="lazy" decoding="async" alt="Окрашенные корпуса шаровых кранов"></figure>
+        </div>
       </section>
     </div>
   </section>

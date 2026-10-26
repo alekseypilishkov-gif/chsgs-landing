@@ -5,13 +5,14 @@ import {createFactoryDetail} from './factory-detail.js';
 
 
 const root=document.documentElement,chapters=[...document.querySelectorAll('.chapter')];
-const links=[...document.querySelectorAll('.section-menu a')];
+const links=[...document.querySelectorAll('.menu-links a')];
 const menu=document.querySelector('#section-menu'),menuToggle=document.querySelector('.menu-toggle'),status=document.querySelector('#scene-status');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)'),finePointer=matchMedia('(hover: hover) and (pointer: fine)');
 let current=-1,progress=0,frame=0,last=0,clock=0,selected=0;
 let renderer,scene,camera,presentation,THREE,factoryModel,factoryLoading;
-let menuOpen=false,menuBlend=0,detailBlend=0;
+let menuOpen=false,menuIntent=0,menuBlend=0,detailBlend=0;
 const pointer=[0,0],pan=[0,0],blueprint=document.querySelector('.blueprint-grid');
+const menuChannels=[...document.querySelectorAll('#menu-chromatic feOffset')];
 
 
 root.classList.add('is-enhanced');
@@ -44,17 +45,18 @@ document.addEventListener('focusin',event=>{const target=interactive(event.targe
 document.addEventListener('focusout',event=>{if(menuMotion.target===interactive(event.target)&&!menuMotion.target?.matches(':hover'))focusGuides(null);});
 function targetProgress(){return selected;}
 async function setMenu(open){
-  if(open&&detail.active){menuToggle.disabled=true;const done=await detail.set(false);menuToggle.disabled=false;if(!done)return false;}
+  const intent=++menuIntent;
   if(!open)for(const link of links)fillMenuLink(link,false);
   if(open!==menuOpen){menuOpen=open;root.classList.toggle('is-menu-open',open);
     menuToggle.setAttribute('aria-expanded',String(open));menuToggle.setAttribute('aria-label',open?'Закрыть меню':'Меню разделов');}
+  if(open){detail.cover(true);if(detail.active)await detail.set(detail.requested);if(intent!==menuIntent)return false;}
   const finished=menuMotion.set(open);
-  finished.then(done=>{if(done&&open&&menuOpen)(menu.querySelector('a[aria-current]')||menu.querySelector('a')).focus({preventScroll:true});});
+  finished.then(done=>{if(!done||intent!==menuIntent)return;if(open&&menuOpen)(menu.querySelector('a[aria-current]')||menu.querySelector('a')).focus({preventScroll:true});else if(!menuOpen)detail.cover(false);});
   requestFrame();return finished;
 }
 menuToggle.addEventListener('click',()=>setMenu(!menuOpen));
 function go(index){
-  focusGuides(null);selected=clamp(index,0,3);progress=selected;updateUI();requestFrame();
+  focusGuides(null);selected=clamp(index,0,chapters.length-1);progress=selected;updateUI();requestFrame();
 }
 async function ensureFactory(){
   if(factoryModel){detail.setModelStatus(true);return;}
@@ -71,13 +73,14 @@ document.querySelector('.detail-close').addEventListener('click',async()=>{if(aw
 for(const link of document.querySelectorAll('a[href^="#"]'))link.addEventListener('click',async event=>{
   const index=chapters.findIndex(chapter=>'#'+chapter.id===link.hash);
   if(index<0)return;
-  event.preventDefault();if(detail.active&&!await detail.set(false))return;if(menuMotion.active){const done=await setMenu(false);if(!done||menuOpen)return;}go(index);
+  event.preventDefault();if(menuOpen||menuMotion.active){const done=await setMenu(false);if(!done||menuOpen)return;}if(detail.active&&!await detail.set(false))return;go(index);
   if(link.closest('.section-menu'))menuToggle.focus();
   if(link.classList.contains('skip')){const heading=chapters[index].querySelector('h1');heading.tabIndex=-1;heading.focus({preventScroll:true});}
 });
 document.addEventListener('keydown',event=>{
-  if(event.key==='Escape'&&detail.active){detail.set(false).then(done=>{if(done)document.querySelector('#factory-more').focus({preventScroll:true});});return;}
   if(event.key==='Escape'&&menuOpen){setMenu(false);menuToggle.focus();return;}
+  if(event.key==='Escape'&&menuMotion.active)return;
+  if(event.key==='Escape'&&detail.active){detail.set(false).then(done=>{if(done)document.querySelector('#factory-more').focus({preventScroll:true});});return;}
   if(menuMotion.active&&event.key==='Tab'){
     const controls=[document.querySelector('.identity'),menuToggle,...(menuMotion.busy?[]:menu.querySelectorAll('a'))],index=controls.indexOf(document.activeElement);
     if(event.shiftKey&&index===0){event.preventDefault();controls.at(-1).focus();}
@@ -112,12 +115,16 @@ function render(now){
   const panTarget=panAt(pointer[0],pointer[1],finePointer.matches&&!reduced.matches);
   for(let axis=0;axis<2;axis++){pan[axis]+=(panTarget[axis]-pan[axis])*(1-Math.exp(-dt*.002));if(Math.abs(pan[axis]-panTarget[axis])<.00001)pan[axis]=panTarget[axis];}
   const detailState=detail.update(now);
+  const menuTarget=menuOpen&&menuMotion.active?1:0;
+  menuBlend=reduced.matches?menuTarget:menuBlend+(menuTarget-menuBlend)*(1-Math.exp(-dt*.0033));
+  if(Math.abs(menuTarget-menuBlend)<.0001)menuBlend=menuTarget;
+  root.classList.toggle('has-menu-aberration',menuBlend>0);
+  menuChannels.forEach((channel,index)=>{const amount=menuBlend*(index===0?1:-1),x=(amount*2.5).toFixed(3);if(channel.getAttribute('dx')===x)return;channel.setAttribute('dx',x);channel.setAttribute('dy',(amount*.5).toFixed(3));});
   blueprint.style.translate=(-pan[0]*1600).toFixed(3)+'px '+(pan[1]*1800-(reduced.matches?0:Math.min(detailState.scroll*.035,40))).toFixed(3)+'px';
   updateUI();
   document.querySelector('#journey-progress').style.transform='scaleX('+detailState.progress+')';
   if(renderer&&presentation){
     clock+=dt/1000;
-    const menuTarget=menuMotion.active?1:0;menuBlend=reduced.matches?menuTarget:menuBlend+(menuTarget-menuBlend)*(1-Math.exp(-dt*.006));
     const detailTarget=detail.active?1:0;detailBlend=reduced.matches?detailTarget:detailBlend+(detailTarget-detailBlend)*(1-Math.exp(-dt*.006));
     const state=presentation.update(clock,{progress,pan,reduced:reduced.matches,menu:menuBlend,detail:detailBlend,detailScroll:detailState.scroll,height:innerHeight});
     if(factoryModel){const factoryState=factoryModel.update(clock,{...detailState,active:detailState.factoryActive,width:innerWidth,height:innerHeight,camera,pan,reduced:reduced.matches});root.dataset.factoryReveal=factoryState.reveal.toFixed(3);}
@@ -126,7 +133,7 @@ function render(now){
     renderer.render(scene,camera);root.dataset.pan=pan.map(v=>v.toFixed(5)).join(',');
   }
   root.dataset.progress=progress.toFixed(5);
-  if(Math.abs(target-progress)>.00001||(!reduced.matches&&((renderer&&presentation)||detail.active))||pan.some((v,i)=>Math.abs(v-panTarget[i])>.00001))requestFrame();
+  if(Math.abs(target-progress)>.00001||Math.abs(menuTarget-menuBlend)>.0001||(!reduced.matches&&((renderer&&presentation)||detail.active))||pan.some((v,i)=>Math.abs(v-panTarget[i])>.00001))requestFrame();
 }
 addEventListener('scroll',()=>{focusGuides(null);requestFrame();},{passive:true});
 addEventListener('pointermove',event=>{if(event.pointerType==='mouse'){pointer[0]=event.clientX/innerWidth-.5;pointer[1]=event.clientY/innerHeight-.5;requestFrame();}},{passive:true});

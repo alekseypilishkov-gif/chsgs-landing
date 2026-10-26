@@ -66,7 +66,7 @@ export async function createFactoryDetailModel(scene){
     update(seconds,{rect,width,height,camera,active,reduced=false,pan=[0,0]}){
       if(!active||!rect||rect.top>height||rect.bottom<0){rig.visible=false;return {reveal:started===null?0:1};}
       if(started===null&&(rect.top+rect.height*.5)<height*.9)started=seconds;
-      const reveal=reduced?1:started===null?0:Math.min(1,(seconds-started)/2.2);
+      const reveal=reduced?1:started===null?0:Math.min(1,(seconds-started)/1.1);
       rig.visible=reveal>0;particle.visible=reveal<1;particleFringes.forEach(mesh=>mesh.visible=reveal<1);particleMaterial.uniforms.uPixelRatio.value=Math.min(globalThis.devicePixelRatio||1,1.75);
       const span=2*camera.position.length()*Math.tan(camera.fov*Math.PI/360),worldWidth=span*width/height;
       rig.scale.setScalar(rect.width/width*worldWidth/5.8);

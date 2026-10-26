@@ -43,7 +43,7 @@ export function frameInsets(rect,width,height){
   return {top:rect.top,right:width-rect.right,bottom:height-rect.bottom,left:rect.left};
 }
 
-export const menuTiming={dim:180,collapse:380,cross:80,expand:520,character:28,rowPause:160,hide:180,brighten:260};
+export const menuTiming={dim:320,collapse:380,cross:80,expand:520,character:28,rowPause:160,hide:180,brighten:260};
 export function menuGridAt(width,height){
   const spacing=Math.min(333,width*.6,height*.6);
   const lines=size=>{const count=Math.max(2,Math.floor(size/spacing));return Array.from({length:count},(_,i)=>(size-1)/2+(i-(count-1)/2)*spacing);};
