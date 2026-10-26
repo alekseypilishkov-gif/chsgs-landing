@@ -4,45 +4,94 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#262626">
-  <meta name="description" content="От чертежа к готовому изделию: интерактивная модель шарового крана ЛД DN400.">
-  <title>ЧСГС — от чертежа к изделию</title>
-  <script>history.scrollRestoration='manual';window.scrollTo({top:0,left:0,behavior:'instant'});</script>
+  <meta name="description" content="ЧелябинскСпецГражданСтрой: завод, продукция, сервис и глобальное присутствие. Интерактивное путешествие.">
+  <title>ЧСГС — завод, продукция, сервис</title>
   <link rel="icon" href="assets/ld.svg" type="image/svg+xml">
   <link rel="preload" href="assets/Montserrat-Variable.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="landing.css">
+  <script>document.documentElement.classList.add('has-js')</script>
   <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
 </head>
 <body>
-  <a class="skip" href="#scene">К модели крана</a>
-  <main>
-    <section class="experience" id="experience" aria-label="Создание шарового крана" data-product="products/dn400-pp/product.json" data-state="loading" data-progress="0">
-      <div class="stage">
-        <div class="canvas-wrap" id="canvas-wrap">
-          <canvas id="scene" tabindex="0" aria-label="Трёхмерная модель крана. Вращайте горизонтальным перетаскиванием или стрелками влево и вправо." role="img"></canvas>
-          <img class="fallback" src="products/dn400-pp/draft.svg" alt="Боковая проекция шарового крана с редуктором" width="970" height="1189">
-        </div>
-        <div class="view-tools" id="drag-hint" hidden><span>Потяните влево или вправо</span><button id="reset-view" type="button">Исходный ракурс</button></div>
-        <div class="load-state" id="load-state" role="status"><span class="load-meter"><span id="load-fill"></span></span><span id="load-copy">Подготавливаем модель</span><button id="retry" type="button" hidden>Загрузить ещё раз</button></div>
-        <footer class="scene-footer" hidden inert>
-          <p class="chapter-title" id="chapter-title" aria-live="off">Чертёж</p>
-          <nav class="chapters" id="chapters" aria-label="Этапы создания крана">
-            <button type="button" data-stop="0.08" aria-current="step">Чертёж</button>
-            <button type="button" data-stop="0.37">Объём</button>
-            <button type="button" data-stop="0.64">Детали</button>
-            <button type="button" data-stop="0.77">Материалы</button>
-            <button type="button" data-stop="1">Сборка</button>
-            <button type="button" data-stop="1.64" data-installation hidden>Монтаж</button>
-          <button type="button" data-stop="1.88" data-cutaway hidden>Разрез</button>
-          <button type="button" data-stop="1.94" data-water hidden>Вода</button>
-          <button type="button" data-stop="2.04" data-opening hidden>Открытие</button>
-          </nav>
-          <button class="scroll-cue" type="button" id="next-stage" aria-label="Перейти к следующему этапу"><span id="cue-copy">Продолжайте скролл</span><img src="assets/next-kit.svg" width="16" height="16" alt=""></button>
-        </footer>
-        <div class="scroll-progress" aria-hidden="true"><span id="progress-fill"></span></div>
-      </div>
-    </section>
-    <noscript><p class="no-script">Для интерактивной модели включите JavaScript. Чертёж изделия доступен выше.</p></noscript>
+  <a class="skip" href="#factory">К разделам</a>
+  <div class="blueprint-grid" aria-hidden="true"></div>
+  <div class="blueprint-vignette" aria-hidden="true"></div>
+  <div class="landscape" aria-hidden="true"><canvas id="product-scene"></canvas></div>
+  <div class="menu-shade" aria-hidden="true"></div>
+  <div class="screen-guides" aria-hidden="true">
+    <span class="screen-guide screen-guide--top"></span><span class="screen-guide screen-guide--bottom"></span>
+    <span class="screen-guide screen-guide--left"></span><span class="screen-guide screen-guide--right"></span>
+  </div>
+  <header class="header">
+    <a class="identity" href="#factory" aria-label="ЧелябинскСпецГражданСтрой, к началу"><img src="assets/ld-kit.svg" width="79" height="48" alt="ЛД"><span>ЧЕЛЯБИНСК<wbr>СПЕЦ<wbr>ГРАЖДАНСТРОЙ</span></a>
+    <button class="menu-toggle" type="button" aria-label="Меню разделов" aria-controls="section-menu" aria-expanded="false"><span class="menu-label menu-label--open">Меню</span><span class="menu-label menu-label--close">Закрыть</span><span class="menu-icon" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span></button>
+  </header>
+  <nav class="section-menu" id="section-menu" aria-label="Меню разделов" hidden>
+    <div class="menu-links">
+      <a href="#factory" aria-label="О заводе"><span class="menu-title">О заводе</span><span class="menu-index" aria-hidden="true">01</span></a>
+      <a href="#products" aria-label="Продукция"><span class="menu-title">Продукция</span><span class="menu-index" aria-hidden="true">02</span></a>
+      <a href="#service" aria-label="Сервис"><span class="menu-title">Сервис</span><span class="menu-index" aria-hidden="true">03</span></a>
+      <a href="#presence" aria-label="Достижения"><span class="menu-title">Достижения</span><span class="menu-index" aria-hidden="true">04</span></a>
+    </div>
+  </nav>
+  <main id="journey">
+    <section class="chapter" id="factory" aria-labelledby="factory-title"><div class="chapter__content">
+      <h1 id="factory-title">ЗАВОД ЧСГС</h1>
+      <p>системообразующий завод<br>и лидер производства стальных шаровых кранов</p>
+      <button class="primary-button hero-button" id="factory-more" type="button" aria-controls="factory-detail" aria-expanded="false">Подробнее о заводе</button>
+    </div></section>
+    <section class="chapter" id="products" aria-labelledby="products-title"><div class="chapter__content">
+      <h1 id="products-title">Продукция</h1>
+      <p>Модернизация продукции<span class="separator">/</span>100% контроль качества</p>
+      <a class="product-link primary-button" href="product.html">Открыть модель DN400</a>
+    </div></section>
+    <section class="chapter" id="service" aria-labelledby="service-title"><div class="chapter__content">
+      <h1 id="service-title">Сервис</h1>
+      <p>Защита от фальсификата<span class="separator">/</span>Сервисная поддержка</p>
+    </div></section>
+    <section class="chapter" id="presence" aria-labelledby="presence-title"><div class="chapter__content">
+      <h1 id="presence-title">Глобальное присутствие<br>и достижения</h1>
+      <p>Карта дилеров<span class="separator">/</span>Список партнёров</p>
+    </div></section>
   </main>
-  <script type="module" src="app.js"></script>
+  <section class="factory-detail" id="factory-detail" aria-labelledby="factory-detail-title" hidden>
+    <button class="detail-close" type="button" aria-label="Закрыть информацию о заводе"><svg class="close-border" viewBox="0 0 64 64" aria-hidden="true"><rect x=".5" y=".5" width="63" height="63" pathLength="1"/></svg><svg class="close-cross" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 5 14 14M19 5 5 19"/></svg></button>
+    <div class="detail-scroll-cue" aria-hidden="true"><span>Скролльте вниз</span></div>
+    <div class="detail-content">
+      <section class="detail-intro">
+        <h2 id="factory-detail-title">О ЗАВОДЕ ЧСГС</h2>
+        <p class="factory-introduction">Завод «ЧелябинскСпецГражданСтрой» (ЧСГС) — крупнейшая производственная площадка Группы компаний «ЛД» и системообразующее предприятие Российской Федерации в сфере машиностроения. Предприятие ведет историю с 1992 года и работает в формате завода полного цикла с 2002 года. ЧСГС обеспечивает полное замещение импортной общепромышленной и специализированной арматуры на ключевых объектах теплоэнергетики, газоснабжения и добывающей промышленности, выстроив независимое от иностранных комплектующих производство.</p>
+        <figure class="factory-visual" data-parallax=".12"><figcaption class="hero-sr-text">Проволочная модель производственного комплекса ЧСГС</figcaption><p role="status">Подготавливаем 3D-модель завода</p></figure>
+      </section>
+      <section class="factory-scale" aria-labelledby="factory-scale-title">
+        <h3 id="factory-scale-title">Масштаб завода в цифрах</h3>
+        <dl class="factory-stats">
+          <div><dt>Лет опыта</dt><dd><p class="stat-number" aria-label="Более 25"><span class="stat-prefix" aria-hidden="true">Более</span> <span data-count="25" aria-hidden="true">25</span></p><p>В производстве стальной трубопроводной арматуры.</p></dd></div>
+          <div><dt>Изделий в год</dt><dd><p class="stat-number" aria-label="Более 2 000 000"><span class="stat-prefix" aria-hidden="true">Более</span> <span data-count="2000000" aria-hidden="true">2 000 000</span></p><p>Одни из крупнейших производственных мощностей в отрасли.</p></dd></div>
+          <div><dt>Единиц оборудования</dt><dd><p class="stat-number" aria-label="Около 700"><span class="stat-prefix" aria-hidden="true">Около</span> <span data-count="700" aria-hidden="true">700</span></p><p>Современный производственный комплекс полного цикла.</p></dd></div>
+          <div><dt>Патентов</dt><dd><p class="stat-number" aria-label="Более 10"><span class="stat-prefix" aria-hidden="true">Более</span> <span data-count="10" aria-hidden="true">10</span></p><p>Собственные разработки в области стальной трубопроводной арматуры.</p></dd></div>
+          <div><dt>Сотрудников</dt><dd><p class="stat-number" aria-label="1 100"><span data-count="1100" aria-hidden="true">1 100</span></p><p>Профессиональная команда производственных и инженерных специалистов.</p></dd></div>
+        </dl>
+      </section>
+      <section class="factory-technology" aria-labelledby="factory-technology-title">
+        <h3 id="factory-technology-title">Технологический парк<br>и глубина производства</h3>
+        <p class="technology-lead">От стального проката до готовой арматуры: собственное производство объединяет обработку металла, роботизированную сварку, автоматическую сборку и защиту поверхностей.</p>
+        <div class="technology-row">
+          <div class="technology-copy"><h4>Полный цикл. Собственная автоматизация.</h4><p>Проектирование, комплектующие, сборка и испытания сосредоточены на заводе. Здесь создана первая в России автоматическая линия сборки газовой арматуры собственной разработки. Она контролирует затяжку и сжатие уплотнений для повторяемого качества.</p></div>
+          <figure class="detail-photo" data-parallax=".2"><img src="assets/factory-detail/production-line.png" width="800" height="533" loading="lazy" alt="Парк станков с ЧПУ на заводе ЧСГС"><figcaption>Механическая обработка</figcaption></figure>
+        </div>
+        <div class="technology-row technology-row--reverse">
+          <div class="technology-copy"><h4>Точность обработки. Прочность соединений.</h4><p>Более 120 многофункциональных станков с ЧПУ обрабатывают детали из Ст20, 09Г2С, 12Х18Н10Т и AISI 316. Сварочные роботы следят за дугой и геометрией шва, обеспечивая прочность корпусов при гидравлических и механических нагрузках.</p></div>
+          <figure class="detail-photo" data-parallax=".16"><img src="assets/factory-detail/technology-park.png" width="800" height="533" loading="lazy" alt="Автоматизированный раскрой стального проката в цехе ЧСГС"><figcaption>Подготовка стальных деталей</figcaption></figure>
+        </div>
+        <div class="technology-finish"><div><h4>Прецизионная доводка</h4><p>Шлифование и полирование контактных поверхностей улучшают геометрию и снижают шероховатость. Меньшее трение продлевает ресурс уплотнений и уменьшает момент управления.</p></div><div><h4>Защита металла</h4><p>Гальванические покрытия и термодиффузионное цинкование защищают пружины и крепёж от атмосферной и химической коррозии.</p></div></div>
+        <p class="detail-source">Материалы и фотографии — <a href="https://xn--d1an.xn--p1ai/info_ld_plants/chsgs/" target="_blank" rel="noreferrer">Заводы «ЛД»</a></p>
+      </section>
+    </div>
+  </section>
+  <div class="journey-progress" aria-hidden="true"><span id="journey-progress"></span></div>
+  <p class="scene-status" id="scene-status" role="status" hidden>Подготавливаем продукцию</p>
+  <noscript><style>#factory-more,.detail-close,.detail-scroll-cue,.factory-visual{display:none}.factory-detail[hidden]{display:block!important;position:relative;overflow:visible}.detail-content{padding-top:80px}</style><p class="no-script">Для интерактивной сцены включите JavaScript. Информация о заводе доступна ниже.</p></noscript>
+  <script type="module" src="landing.js"></script>
 </body>
 </html>

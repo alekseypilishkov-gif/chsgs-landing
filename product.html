@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#262626">
+  <meta name="description" content="От чертежа к готовому изделию: интерактивная модель шарового крана ЛД DN400.">
+  <title>ЧСГС — от чертежа к изделию</title>
+  <script>history.scrollRestoration='manual';window.scrollTo({top:0,left:0,behavior:'instant'});</script>
+  <link rel="icon" href="assets/ld.svg" type="image/svg+xml">
+  <link rel="preload" href="assets/Montserrat-Variable.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
+</head>
+<body>
+  <a class="skip" href="#scene">К модели крана</a>
+  <main>
+    <section class="experience" id="experience" aria-label="Создание шарового крана" data-product="products/dn400-pp/product.json" data-state="loading" data-progress="0">
+      <div class="stage">
+        <div class="canvas-wrap" id="canvas-wrap">
+          <canvas id="scene" tabindex="0" aria-label="Трёхмерная модель крана. Вращайте горизонтальным перетаскиванием или стрелками влево и вправо." role="img"></canvas>
+          <img class="fallback" src="products/dn400-pp/draft.svg" alt="Боковая проекция шарового крана с редуктором" width="970" height="1189">
+        </div>
+        <div class="view-tools" id="drag-hint" hidden><span>Потяните влево или вправо</span><button id="reset-view" type="button">Исходный ракурс</button></div>
+        <div class="load-state" id="load-state" role="status"><span class="load-meter"><span id="load-fill"></span></span><span id="load-copy">Подготавливаем модель</span><button id="retry" type="button" hidden>Загрузить ещё раз</button></div>
+        <footer class="scene-footer" hidden inert>
+          <p class="chapter-title" id="chapter-title" aria-live="off">Чертёж</p>
+          <nav class="chapters" id="chapters" aria-label="Этапы создания крана">
+            <button type="button" data-stop="0.08" aria-current="step">Чертёж</button>
+            <button type="button" data-stop="0.37">Объём</button>
+            <button type="button" data-stop="0.64">Детали</button>
+            <button type="button" data-stop="0.77">Материалы</button>
+            <button type="button" data-stop="1">Сборка</button>
+            <button type="button" data-stop="1.64" data-installation hidden>Монтаж</button>
+          <button type="button" data-stop="1.88" data-cutaway hidden>Разрез</button>
+          <button type="button" data-stop="1.94" data-water hidden>Вода</button>
+          <button type="button" data-stop="2.04" data-opening hidden>Открытие</button>
+          </nav>
+          <button class="scroll-cue" type="button" id="next-stage" aria-label="Перейти к следующему этапу"><span id="cue-copy">Продолжайте скролл</span><img src="assets/next-kit.svg" width="16" height="16" alt=""></button>
+        </footer>
+        <div class="scroll-progress" aria-hidden="true"><span id="progress-fill"></span></div>
+      </div>
+    </section>
+    <noscript><p class="no-script">Для интерактивной модели включите JavaScript. Чертёж изделия доступен выше.</p></noscript>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

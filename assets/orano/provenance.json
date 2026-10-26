@@ -1,0 +1,22 @@
+{
+  "source": "https://www.orano.group/experience/innovation/js/app.6e0ef2bb317853100d6a.js",
+  "downloaded": "2026-10-25",
+  "scope": "Menu glitch shader and gradient only; no fonts or models",
+  "assets": [
+    {
+      "file": "menu-glitch.frag",
+      "module": "6W3a",
+      "sha256": "2f238730fcf2bc1e78d1fb36848bc0040909347347697794893e737c77bbe816"
+    },
+    {
+      "file": "menu-glitch.vert",
+      "module": "+Tqy",
+      "sha256": "af3c5bc905011637e4f2feb77cb00afe1c2978b67c19fc6d96f3eba168e534c9"
+    },
+    {
+      "file": "glitch-gradient.png",
+      "module": "Ds0g",
+      "sha256": "e12cec66ff95845cdac3353912e5959df06d6a73a5e8dff0f9321e26f5380353"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "source": "https://xn--d1an.xn--p1ai/info_ld_plants/chsgs/",
+  "accessed": "2026-10-26",
+  "assets": [
+    {
+      "file": "production-line.png",
+      "url": "https://xn--d1an.xn--p1ai/upload/info_page/additional/1bc/1bc760cf88a2558e0917bddf43e8f76f_ld_6a6043e917b5e2.87650181.png",
+      "sha256": "bf34a3616d097bb579e5bae2250a31f7f51fa30c96fccaef6c7c66755efd6101",
+      "bytes": 483538,
+      "origin": "Existing factory photograph from the user-selected LD page; copied unchanged, no generated imagery."
+    },
+    {
+      "file": "technology-park.png",
+      "url": "https://xn--d1an.xn--p1ai/upload/info_page/additional/a23/a23ef6497fe719f40fc100ed5c80e59e_ld_6a60441be1b7e9.35561871.png",
+      "sha256": "c14e66b60c9c8545f5e15dddb742d573317f8b264083bdca2d4d99799f76abc9",
+      "bytes": 771636,
+      "origin": "Existing factory photograph from the user-selected LD page; copied unchanged, no generated imagery."
+    }
+  ]
+}

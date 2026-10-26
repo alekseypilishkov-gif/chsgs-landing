@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "segments": 112375,
+  "generatorSHA256": "8b0455b089055ec74a53594e79bee6577683c7eb942ff0bb5acb1d33fa7a8ee8",
+  "cadGeneratorSHA256": "2479dcb5b4adb3ac965f0274cf1fee9c00a8320ad2f0e433289e26442bdb2d5e",
+  "models": [
+    {
+      "id": "valve",
+      "name": "Шаровой кран DN400",
+      "file": "valve.bin.gz",
+      "sha256": "98ee6b2741984aaf17afb6cad8d4b6d176db83327af05c64a060184357dafad0",
+      "bytes": 873571,
+      "sourceSHA256": "7560c1c442b90714cc41e7ddc1d3dea2b14519a77e3e33f7ff4bd42b05791d69",
+      "originalSegments": 87978,
+      "bounds": {
+        "min": [
+          -485,
+          -380,
+          -454.9937438964844
+        ],
+        "max": [
+          485,
+          809.43701171875,
+          319.9925537109375
+        ],
+        "centre": [
+          0,
+          214.718505859375,
+          -67.50059509277344
+        ],
+        "scale": 0.004035522648705832
+      }
+    },
+    {
+      "id": "butterfly",
+      "name": "Дисковый затвор DN900",
+      "file": "butterfly.bin.gz",
+      "sha256": "d62024aabb1142660ee07dc75151bb27e3ffaa659c735c29795194c52d542572",
+      "bytes": 837083,
+      "sourceSHA256": "20789c3d41d5de282b216468d83f141809dbffe280ae567a588c350e19258dd5",
+      "originalSegments": 99221,
+      "bounds": {
+        "min": [
+          -580.3065185546875,
+          -559.9669799804688,
+          -1241.8065185546875
+        ],
+        "max": [
+          297,
+          704.9937133789062,
+          616
+        ],
+        "centre": [
+          -141.65325927734375,
+          72.51336669921875,
+          -312.90325927734375
+        ],
+        "scale": 0.0025836920863719663
+      }
+    },
+    {
+      "id": "strainer",
+      "name": "Грязевик DN300",
+      "file": "strainer.bin.gz",
+      "sha256": "d20027925cf0cf48bd90dc9341c4df6f38c7e28e15e005df3e02d7d76dbf2c6e",
+      "bytes": 975196,
+      "sourceSHA256": "8710289b2ebcd7c90e90a88a4d8e8524cfe787a951f60f82c4ad64f08fd2fa7b",
+      "originalSegments": 112375,
+      "bounds": {
+        "min": [
+          -319.8050537109375,
+          -546,
+          -465
+        ],
+        "max": [
+          319.8050537109375,
+          494,
+          465
+        ],
+        "centre": [
+          0,
+          -26,
+          0
+        ],
+        "scale": 0.004061538461538462
+      }
+    }
+  ]
+}
